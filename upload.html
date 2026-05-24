@@ -4,262 +4,422 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
   <meta name="theme-color" content="#D4AF37"/>
-  <title>IMMORTAIL™ — Upload Assets</title>
+  <title>IMMORTAIL™ — Studio</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="styles.css"/>
   <style>
-    body { overflow:auto; background:radial-gradient(ellipse 100% 60% at 50% 0%,#161c24,#0B0F14 55%); }
-    .upload-wrap { max-width:720px; margin:0 auto; padding:1.5rem 1.2rem 4rem; }
+    :root { --panel-bg: rgba(18,12,6,0.85); }
+    body { overflow:auto; background:radial-gradient(ellipse 120% 70% at 50% 0%, #181c24, #0B0F14 60%); min-height:100vh; }
+    .studio-wrap { max-width:900px; margin:0 auto; padding:0 1rem 5rem; }
 
-    /* Top bar */
-    .upload-topbar { display:flex; align-items:center; justify-content:space-between; padding:0.8rem 0 1.4rem; }
-    .back-btn { color:var(--text-muted); font-size:0.8rem; cursor:pointer; text-decoration:none; display:flex; align-items:center; gap:0.4rem; transition:color 0.2s; }
-    .back-btn:hover { color:var(--gold); }
+    /* ── Top bar ── */
+    .studio-topbar { display:flex; align-items:center; gap:1rem; padding:1rem 0 1.4rem; border-bottom:1px solid var(--border-dim); margin-bottom:1.4rem; }
+    .back-link { color:var(--text-muted); font-size:0.8rem; text-decoration:none; display:flex; align-items:center; gap:0.35rem; transition:color 0.2s; }
+    .back-link:hover { color:var(--gold); }
+    .studio-title { font-size:1rem; font-weight:700; color:var(--cream); }
+    .worker-pill { display:inline-flex; align-items:center; gap:0.4rem; font-size:0.68rem; color:var(--text-muted); background:rgba(0,0,0,0.3); border:1px solid var(--border-dim); border-radius:999px; padding:0.2rem 0.65rem; margin-left:auto; }
+    .wpill-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
 
-    /* Live preview */
-    .preview-bar { display:flex; align-items:center; gap:1rem; background:var(--glass-panel); border:1px solid var(--border-dim); border-radius:var(--r-lg); padding:1rem 1.2rem; margin-bottom:1.4rem; }
-    .preview-dog { width:80px; height:80px; border-radius:var(--r-md); background:#0d0b08; border:1px solid var(--border-dim); overflow:hidden; position:relative; flex-shrink:0; }
-    .preview-dog canvas { width:100%; height:100%; }
-    .preview-dog img   { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
-    .preview-info { flex:1; }
-    .preview-name { font-size:1rem; font-weight:700; color:var(--gold); }
-    .preview-desc { font-size:0.72rem; color:var(--text-muted); margin-top:0.2rem; line-height:1.4; }
-    .expr-switcher { display:flex; gap:0.4rem; }
-    .expr-btn { background:rgba(212,175,55,0.05); border:1px solid var(--border-dim); border-radius:var(--r-sm); color:var(--text-muted); font-size:0.72rem; padding:0.28rem 0.55rem; cursor:pointer; transition:all 0.15s; }
-    .expr-btn.active { background:rgba(212,175,55,0.15); border-color:var(--gold); color:var(--gold); }
+    /* ── Storage bar ── */
+    .storage-bar { display:flex; align-items:center; gap:0.8rem; background:rgba(212,175,55,0.04); border:1px solid var(--border-dim); border-radius:var(--r-md); padding:0.65rem 1rem; margin-bottom:1.2rem; font-size:0.72rem; color:var(--text-muted); }
+    .storage-track { flex:1; height:4px; background:rgba(255,255,255,0.07); border-radius:999px; overflow:hidden; }
+    .storage-fill  { height:100%; background:linear-gradient(90deg, var(--gold), var(--copper)); border-radius:999px; transition:width 0.5s; }
 
-    /* Upload zones */
-    .section-title { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin:1.2rem 0 0.6rem; }
+    /* ── Two-column layout ── */
+    .studio-layout { display:grid; grid-template-columns:1fr 320px; gap:1.2rem; }
+    @media(max-width:700px){ .studio-layout { grid-template-columns:1fr; } }
 
-    .upload-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:0.75rem; }
+    /* ── Left: upload panel ── */
+    .upload-panel { display:flex; flex-direction:column; gap:1rem; }
 
-    .upload-card { background:var(--glass-panel); border:1px solid var(--border-dim); border-radius:var(--r-md); overflow:hidden; transition:border-color 0.2s; }
-    .upload-card:hover { border-color:rgba(212,175,55,0.35); }
-    .upload-card.has-asset { border-color:rgba(74,222,128,0.5); }
+    /* Expression tabs */
+    .expr-tab-row { display:flex; gap:0.4rem; }
+    .etab { flex:1; background:rgba(212,175,55,0.04); border:1px solid var(--border-dim); border-radius:var(--r-sm); color:var(--text-muted); font-family:var(--font); font-size:0.78rem; padding:0.45rem 0; cursor:pointer; text-align:center; transition:all 0.16s; }
+    .etab:hover  { border-color:var(--gold); color:var(--gold); }
+    .etab.active { background:rgba(212,175,55,0.14); border-color:var(--gold); color:var(--gold); font-weight:700; }
+    .etab .etab-count { font-size:0.58rem; color:var(--text-muted); display:block; margin-top:1px; }
 
-    .card-preview { width:100%; aspect-ratio:1; background:#0d0b08; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-    .card-preview img, .card-preview video { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
-    .card-empty { font-size:2.2rem; opacity:0.3; }
-    .card-check { position:absolute; top:6px; right:6px; background:#4ade80; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:#0B0F14; font-weight:700; }
+    /* Slot cards grid */
+    .slot-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.7rem; }
 
-    .card-body { padding:0.6rem 0.75rem 0.75rem; }
-    .card-label { font-size:0.72rem; font-weight:600; color:var(--cream); margin-bottom:0.4rem; }
-    .card-type  { font-size:0.65rem; color:var(--text-muted); margin-bottom:0.5rem; }
-    .card-btns  { display:flex; gap:0.35rem; }
-    .card-upload { flex:1; }
-    .card-clear  { background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.2); border-radius:var(--r-sm); color:#f87171; font-size:0.7rem; padding:0.28rem 0.5rem; cursor:pointer; }
-    .card-clear:hover { background:rgba(248,113,113,0.18); }
+    .slot-card { background:var(--glass-panel); border:1.5px solid var(--border-dim); border-radius:var(--r-md); overflow:hidden; transition:border-color 0.2s, box-shadow 0.2s; }
+    .slot-card.filled { border-color:rgba(74,222,128,0.5); }
+    .slot-card.filled:hover { box-shadow:0 0 14px rgba(74,222,128,0.1); }
+    .slot-card:hover { border-color:rgba(212,175,55,0.3); }
 
-    /* Big drop zone */
-    .big-drop { border:2px dashed var(--border-dim); border-radius:var(--r-lg); padding:2rem 1.5rem; text-align:center; cursor:pointer; transition:all 0.2s; margin-top:1rem; }
-    .big-drop:hover, .big-drop.active { border-color:var(--gold); background:var(--gold-faint); }
-    .big-drop-icon { font-size:2.5rem; margin-bottom:0.6rem; }
-    .big-drop-text { font-size:0.85rem; color:var(--cream); font-weight:600; }
-    .big-drop-sub  { font-size:0.72rem; color:var(--text-muted); margin-top:0.3rem; }
+    .slot-thumb { width:100%; aspect-ratio:16/9; background:#0a0806; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    .slot-thumb img, .slot-thumb video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+    .slot-thumb .thumb-empty { font-size:2rem; opacity:0.25; }
+    .slot-thumb .thumb-check { position:absolute; top:5px; right:5px; background:#4ade80; border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center; font-size:0.55rem; color:#0B0F14; font-weight:800; }
+    .slot-thumb:hover .thumb-over { opacity:1; }
+    .thumb-over { position:absolute; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s; font-size:0.75rem; color:var(--cream); font-weight:600; }
+
+    .slot-foot { padding:0.5rem 0.7rem 0.6rem; display:flex; align-items:center; gap:0.4rem; }
+    .slot-label { font-size:0.7rem; font-weight:600; color:var(--cream); flex:1; }
+    .slot-size  { font-size:0.6rem; color:var(--text-muted); }
+    .slot-del   { background:none; border:none; color:rgba(248,113,113,0.5); font-size:0.8rem; cursor:pointer; padding:0; line-height:1; transition:color 0.2s; }
+    .slot-del:hover { color:#f87171; }
+
+    /* Drop zone */
+    .drop-zone { border:2px dashed var(--border-dim); border-radius:var(--r-lg); padding:1.5rem; text-align:center; cursor:pointer; transition:all 0.2s; }
+    .drop-zone.over, .drop-zone:hover { border-color:var(--gold); background:rgba(212,175,55,0.04); }
+    .drop-icon { font-size:2rem; margin-bottom:0.4rem; }
+    .drop-main { font-size:0.82rem; font-weight:600; color:var(--cream); }
+    .drop-sub  { font-size:0.68rem; color:var(--text-muted); margin-top:0.25rem; line-height:1.4; }
 
     /* Log */
-    .process-log { margin-top:0.8rem; display:flex; flex-direction:column; gap:0.2rem; max-height:120px; overflow-y:auto; }
-    .log-row { font-size:0.7rem; font-family:monospace; display:flex; gap:0.5rem; padding:0.15rem 0; }
-    .log-ok  { color:#4ade80; }
-    .log-err { color:#f87171; }
-    .log-inf { color:var(--text-muted); }
+    .proc-log { background:rgba(0,0,0,0.3); border:1px solid var(--border-dim); border-radius:var(--r-sm); padding:0.5rem 0.7rem; max-height:90px; overflow-y:auto; display:flex; flex-direction:column; gap:0.12rem; }
+    .plog-row { font-size:0.66rem; font-family:monospace; display:flex; gap:0.4rem; }
+    .plog-ok  { color:#4ade80; }
+    .plog-err { color:#f87171; }
+    .plog-inf { color:var(--text-muted); }
 
-    /* Worker badge */
-    .worker-badge { display:inline-flex; align-items:center; gap:0.4rem; font-size:0.7rem; color:var(--text-muted); background:rgba(0,0,0,0.25); border:1px solid var(--border-dim); border-radius:var(--r-sm); padding:0.25rem 0.7rem; }
+    /* ── Right: preview + virtual copy ── */
+    .preview-panel { display:flex; flex-direction:column; gap:1rem; position:sticky; top:1rem; }
+
+    /* Live canvas */
+    .preview-canvas-wrap { background:#0a0806; border:1px solid var(--border-dim); border-radius:var(--r-lg); overflow:hidden; position:relative; aspect-ratio:1; }
+    #preview-canvas { width:100%; height:100%; display:block; }
+    .preview-name-badge { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); border:1px solid var(--border-dim); border-radius:999px; padding:0.2rem 0.7rem; font-size:0.7rem; font-weight:600; color:var(--gold); white-space:nowrap; }
+
+    /* Environment picker */
+    .env-label { font-size:0.68rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.4rem; }
+    .env-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:0.35rem; }
+    .env-btn { background:rgba(212,175,55,0.04); border:1px solid var(--border-dim); border-radius:var(--r-sm); color:var(--text-muted); font-family:var(--font); font-size:0.68rem; padding:0.38rem 0.3rem; cursor:pointer; text-align:center; transition:all 0.15s; white-space:nowrap; }
+    .env-btn:hover  { border-color:var(--gold); color:var(--gold); }
+    .env-btn.active { background:rgba(212,175,55,0.15); border-color:var(--gold); color:var(--gold); font-weight:700; }
+
+    /* AI Virtual copy section */
+    .vc-section { background:var(--glass-panel); border:1px solid var(--border-dim); border-radius:var(--r-lg); padding:1rem; }
+    .vc-title { font-size:0.82rem; font-weight:700; color:var(--cream); display:flex; align-items:center; gap:0.4rem; margin-bottom:0.5rem; }
+    .vc-desc  { font-size:0.7rem; color:var(--text-muted); line-height:1.5; margin-bottom:0.8rem; }
+
+    .vc-status { display:flex; align-items:center; gap:0.5rem; font-size:0.72rem; padding:0.55rem 0.7rem; background:rgba(0,0,0,0.25); border-radius:var(--r-sm); margin-bottom:0.7rem; color:var(--text-muted); }
+    .vc-dot    { width:8px; height:8px; border-radius:50%; flex-shrink:0; background:var(--border-dim); }
+    .vc-dot.ready    { background:#4ade80; box-shadow:0 0 6px rgba(74,222,128,0.4); }
+    .vc-dot.thinking { background:var(--amber); animation:pulse-dot 0.8s ease-in-out infinite; }
+    .vc-dot.error    { background:#f87171; }
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .vc-result { background:rgba(212,175,55,0.05); border:1px solid rgba(212,175,55,0.2); border-radius:var(--r-sm); padding:0.65rem 0.8rem; font-size:0.72rem; color:var(--cream); line-height:1.6; white-space:pre-wrap; margin-bottom:0.7rem; max-height:160px; overflow-y:auto; }
+
+    /* Virtual copies gallery */
+    .vc-gallery { display:flex; flex-direction:column; gap:0.4rem; max-height:200px; overflow-y:auto; }
+    .vc-item { display:flex; align-items:flex-start; gap:0.6rem; background:rgba(0,0,0,0.2); border:1px solid var(--border-dim); border-radius:var(--r-sm); padding:0.5rem 0.65rem; }
+    .vc-item-env { font-size:1rem; flex-shrink:0; }
+    .vc-item-body { flex:1; min-width:0; }
+    .vc-item-label { font-size:0.65rem; font-weight:600; color:var(--gold); margin-bottom:0.15rem; }
+    .vc-item-text  { font-size:0.65rem; color:var(--text-muted); line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    .vc-item-del   { background:none; border:none; color:rgba(248,113,113,0.4); cursor:pointer; font-size:0.75rem; flex-shrink:0; padding:0; }
+    .vc-item-del:hover { color:#f87171; }
+
+    /* Buttons */
+    .btn-generate { width:100%; padding:0.7rem; background:linear-gradient(135deg,var(--copper),var(--gold)); color:#0B0F14; border:none; border-radius:var(--r-md); font-family:var(--font); font-size:0.82rem; font-weight:700; cursor:pointer; transition:opacity 0.2s; display:flex; align-items:center; justify-content:center; gap:0.5rem; }
+    .btn-generate:hover { opacity:0.88; }
+    .btn-generate:disabled { opacity:0.4; cursor:not-allowed; }
   </style>
 </head>
 <body>
-
-<div class="upload-wrap">
+<div class="studio-wrap">
 
   <!-- Top bar -->
-  <div class="upload-topbar">
-    <a class="back-btn" href="index.html">← Back to companion</a>
-    <div class="worker-badge">
-      <span id="worker-dot" style="width:6px;height:6px;border-radius:50%;background:var(--copper);display:inline-block"></span>
-      <span id="worker-label">Media processor loading…</span>
+  <div class="studio-topbar">
+    <a class="back-link" href="index.html">← Companion</a>
+    <div class="studio-title">🐶 Dog Studio</div>
+    <div class="worker-pill">
+      <span class="wpill-dot" id="worker-dot" style="background:var(--copper)"></span>
+      <span id="worker-label">Loading…</span>
     </div>
   </div>
 
-  <!-- Live preview -->
-  <div class="preview-bar">
-    <div class="preview-dog" id="preview-stage">
-      <canvas id="preview-canvas"></canvas>
-    </div>
-    <div class="preview-info">
-      <div class="preview-name" id="preview-name">Rex</div>
-      <div class="preview-desc">Upload photos, videos &amp; sounds below. Changes apply instantly.<br/>All stored locally on your device — nothing uploaded to servers.</div>
-    </div>
-    <div class="expr-switcher">
-      <button class="expr-btn active" data-expr="idle" onclick="switchExpr('idle',this)">😐</button>
-      <button class="expr-btn" data-expr="happy" onclick="switchExpr('happy',this)">😄</button>
-      <button class="expr-btn" data-expr="sad" onclick="switchExpr('sad',this)">😢</button>
-      <button class="expr-btn" data-expr="excited" onclick="switchExpr('excited',this)">🐾</button>
-    </div>
+  <!-- Storage bar -->
+  <div class="storage-bar">
+    <span id="storage-text">Checking storage…</span>
+    <div class="storage-track"><div class="storage-fill" id="storage-fill" style="width:0%"></div></div>
+    <span id="storage-pct">0%</span>
   </div>
 
-  <!-- ── Slots ── -->
-  <div id="slots-container">
-    <!-- Filled by JS per expression -->
+  <!-- Main layout -->
+  <div class="studio-layout">
+
+    <!-- LEFT: upload -->
+    <div class="upload-panel">
+
+      <!-- Expression tabs -->
+      <div class="expr-tab-row" id="expr-tabs">
+        <button class="etab active" data-expr="idle">😐 Idle<span class="etab-count" id="count-idle">0/4</span></button>
+        <button class="etab" data-expr="happy">😄 Happy<span class="etab-count" id="count-happy">0/4</span></button>
+        <button class="etab" data-expr="sad">😢 Sad<span class="etab-count" id="count-sad">0/4</span></button>
+        <button class="etab" data-expr="excited">🐾 Excited<span class="etab-count" id="count-excited">0/4</span></button>
+      </div>
+
+      <!-- Slot grid (rendered by JS) -->
+      <div class="slot-grid" id="slot-grid"></div>
+
+      <!-- Drop zone -->
+      <div class="drop-zone" id="drop-zone">
+        <div class="drop-icon">📂</div>
+        <div class="drop-main">Drop files here or click to browse</div>
+        <div class="drop-sub">📷 Images → body layer &nbsp;·&nbsp; 🎬 Videos → animation &nbsp;·&nbsp; 🔊 Audio → sounds<br/>Auto-assigned to current expression. Stored locally — never uploaded.</div>
+      </div>
+
+      <!-- Process log -->
+      <div class="proc-log" id="proc-log">
+        <div class="plog-row plog-inf">Ready — upload photos, videos or audio for your dog.</div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: preview + virtual copy -->
+    <div class="preview-panel">
+
+      <!-- Live canvas preview -->
+      <div class="preview-canvas-wrap">
+        <canvas id="preview-canvas"></canvas>
+        <div class="preview-name-badge" id="preview-name">Rex</div>
+      </div>
+
+      <!-- Environment picker -->
+      <div>
+        <div class="env-label">Environment</div>
+        <div class="env-grid" id="env-grid">
+          <!-- filled by JS -->
+        </div>
+      </div>
+
+      <!-- AI Virtual Copy -->
+      <div class="vc-section">
+        <div class="vc-title">✨ AI Virtual Copy</div>
+        <div class="vc-desc">Upload at least one photo, then let AI describe your dog and animate it in the selected environment.</div>
+
+        <div class="vc-status" id="vc-status">
+          <span class="vc-dot" id="vc-dot"></span>
+          <span id="vc-status-text">Upload a body photo first</span>
+        </div>
+
+        <div class="vc-result hidden" id="vc-result"></div>
+
+        <button class="btn-generate" id="btn-generate" onclick="generateVirtualCopy()" disabled>
+          ✨ Generate Virtual Copy
+        </button>
+
+        <div style="margin-top:0.8rem" id="vc-gallery-wrap">
+          <div class="env-label" style="margin-bottom:0.35rem">Saved scenes</div>
+          <div class="vc-gallery" id="vc-gallery"></div>
+        </div>
+      </div>
+
+    </div>
   </div>
-
-  <!-- Big drop zone -->
-  <div class="big-drop" id="big-drop">
-    <div class="big-drop-icon">📂</div>
-    <div class="big-drop-text">Drop any files here</div>
-    <div class="big-drop-sub">Images → body layer · Videos → animation · Audio → sounds · Auto-assigned to current expression tab</div>
-  </div>
-
-  <!-- Log -->
-  <div class="process-log" id="process-log"></div>
-
 </div>
 
 <script src="storage.js"></script>
+<script src="ai.js"></script>
+<script src="worker.js" type="text/javascript"></script>
 <script src="avatar-builder.js"></script>
 <script src="animator.js"></script>
 <script>
 
-const SLOT_DEFS = [
-  { slot:'body:{e}',  label:'Body Photo',     type:'image', accept:'image/*',  icon:'🐶', desc:'Main dog body, any angle' },
-  { slot:'face:{e}',  label:'Face / Eyes',    type:'image', accept:'image/*',  icon:'👁',  desc:'Face layer overlaid on body' },
-  { slot:'video:{e}', label:'Animation',      type:'video', accept:'video/*',  icon:'🎬', desc:'Looping animation (WebM / MP4)' },
-  { slot:'audio:{e}', label:'Sound',          type:'audio', accept:'audio/*',  icon:'🔊', desc:'Sound played on mood change' },
+const SLOT_TYPES = [
+  { key:'body', label:'Body Photo', type:'image', accept:'image/*',  icon:'🐶', desc:'Main body' },
+  { key:'face', label:'Face/Eyes',  type:'image', accept:'image/*',  icon:'👁',  desc:'Face overlay' },
+  { key:'video',label:'Animation',  type:'video', accept:'video/*',  icon:'🎬', desc:'Loop video' },
+  { key:'audio',label:'Sound',      type:'audio', accept:'audio/*',  icon:'🔊', desc:'Mood sound' },
 ];
 
-let _expr = 'idle';
-let _previewAnim = null;
+let _expr   = 'idle';
+let _dogName = 'Rex';
+let _animator = null;
 
+// ── Boot ──────────────────────────────────────────────────────────────────
 window.addEventListener('load', async () => {
   await window.Storage.init();
+  await window.AI.loadConfig();
   await window.AvatarBuilder.init();
 
-  // Load dog name
-  const state = await window.Storage.loadState();
-  if (state?.name) document.getElementById('preview-name').textContent = state.name;
+  const state = await window.Storage.loadState().catch(()=>null);
+  if (state?.name) { _dogName = state.name; document.getElementById('preview-name').textContent = state.name; }
 
-  // Start mini preview animator
+  // Init animator with canvas
   const canvas = document.getElementById('preview-canvas');
-  if (canvas) {
-    canvas.width = 160; canvas.height = 160;
-    if (window.Animator) await window.Animator.init(canvas);
-  }
+  canvas.width  = canvas.offsetWidth  || 320;
+  canvas.height = canvas.offsetHeight || 320;
+  await window.Animator.init(canvas, 'home');
 
-  renderSlots('idle');
+  buildEnvGrid();
+  await refreshAll();
   checkWorker();
-  bindDrop();
+  bindEvents();
+  loadVCGallery();
 });
 
+// ── Worker status ─────────────────────────────────────────────────────────
 function checkWorker() {
   setTimeout(() => {
     const ok = window.AvatarBuilder.workerReady;
-    document.getElementById('worker-dot').style.background = ok ? '#4ade80' : '#f87171';
-    document.getElementById('worker-label').textContent = ok ? 'Media processor ready ✓' : 'Basic mode (Chrome required for bg-removal)';
-  }, 1200);
+    document.getElementById('worker-dot').style.background = ok ? '#4ade80' : 'var(--copper)';
+    document.getElementById('worker-label').textContent = ok
+      ? 'Media processor ✓' : 'Basic mode (no bg removal)';
+  }, 1500);
 }
 
-function switchExpr(expr, btn) {
-  _expr = expr;
-  document.querySelectorAll('.expr-btn').forEach(b => b.classList.toggle('active', b===btn));
-  if (window.Animator) window.Animator.setExpression(expr);
-  renderSlots(expr);
+// ── Environment grid ──────────────────────────────────────────────────────
+function buildEnvGrid() {
+  const grid = document.getElementById('env-grid');
+  const envs = window.Animator.getEnvironments();
+  Object.entries(envs).forEach(([id, env]) => {
+    const btn = document.createElement('button');
+    btn.className  = 'env-btn' + (id === 'home' ? ' active' : '');
+    btn.dataset.env = id;
+    btn.textContent = env.label;
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.env-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      window.Animator.setEnvironment(id);
+      _particles = []; // reset particles
+    });
+    grid.appendChild(btn);
+  });
 }
 
-async function renderSlots(expr) {
-  const container = document.getElementById('slots-container');
-  if (!container) return;
-  container.innerHTML = `<div class="section-title">Assets for "${expr}" expression</div><div class="upload-grid" id="grid-${expr}"></div>`;
-  const grid = document.getElementById(`grid-${expr}`);
+// ── Refresh everything ────────────────────────────────────────────────────
+async function refreshAll() {
+  await updateStorageBar();
+  await renderSlotGrid(_expr);
+  await updateTabCounts();
+  updateVCStatus();
+}
 
-  for (const def of SLOT_DEFS) {
-    const slot = def.slot.replace('{e}', expr);
+// ── Storage bar ───────────────────────────────────────────────────────────
+async function updateStorageBar() {
+  try {
+    const stats = await window.AvatarBuilder.getStorageStats();
+    const mb = (stats.assetBytes / 1024 / 1024).toFixed(1);
+    document.getElementById('storage-text').textContent =
+      `${stats.assetCount} assets · ${mb} MB stored · ${stats.virtualCount} virtual scenes`;
+    document.getElementById('storage-fill').style.width = stats.percent + '%';
+    document.getElementById('storage-pct').textContent  = stats.percent + '%';
+  } catch (_) {}
+}
+
+// ── Slot grid ─────────────────────────────────────────────────────────────
+async function renderSlotGrid(expr) {
+  const grid = document.getElementById('slot-grid');
+  grid.innerHTML = '';
+  for (const st of SLOT_TYPES) {
+    const slot = `${st.key}:${expr}`;
     const url  = await window.AvatarBuilder.getAssetURL(slot);
-    const card = document.createElement('div');
-    card.className = 'upload-card' + (url ? ' has-asset' : '');
-    card.dataset.slot = slot;
+    const asset = await window.AvatarBuilder.getAsset(slot);
+    const filled = !!url;
 
-    let previewHtml = `<div class="card-empty">${def.icon}</div>`;
-    if (url) {
-      if (def.type === 'image')      previewHtml = `<img src="${url}" loading="lazy"/>`;
-      else if (def.type === 'video') previewHtml = `<video src="${url}" autoplay loop muted playsinline></video>`;
-      else if (def.type === 'audio') previewHtml = `<div style="font-size:1.8rem">🔊</div>`;
+    const card = document.createElement('div');
+    card.className = 'slot-card' + (filled ? ' filled' : '');
+
+    let thumbContent = `<div class="thumb-empty">${st.icon}</div>`;
+    if (filled) {
+      if (st.type === 'image') thumbContent = `<img src="${url}" loading="lazy"/>`;
+      else if (st.type === 'video') thumbContent = `<video src="${url}" autoplay loop muted playsinline></video>`;
+      else if (st.type === 'audio') thumbContent = `<div style="font-size:2rem">🔊</div><div style="font-size:0.6rem;color:var(--text-muted);margin-top:4px">${asset?.originalName||''}</div>`;
     }
+    const sizeStr = asset?.size ? `${(asset.size/1024).toFixed(0)}KB` : '';
 
     card.innerHTML = `
-      <div class="card-preview">
-        ${previewHtml}
-        ${url ? '<div class="card-check">✓</div>' : ''}
-      </div>
-      <div class="card-body">
-        <div class="card-label">${def.label}</div>
-        <div class="card-type">${def.desc}</div>
-        <div class="card-btns">
-          <label class="btn-secondary card-upload" style="font-size:0.7rem;padding:0.3rem 0.5rem;cursor:pointer;text-align:center;display:block">
-            ${url ? '⟳ Replace' : '+ Upload'}
-            <input type="file" accept="${def.accept}" data-slot="${slot}" class="slot-input" style="display:none"/>
-          </label>
-          ${url ? `<button class="card-clear" data-slot="${slot}">✕</button>` : ''}
-        </div>
+      <label class="slot-thumb" style="cursor:pointer">
+        ${thumbContent}
+        ${filled ? '<div class="thumb-check">✓</div>' : ''}
+        <div class="thumb-over">${filled ? '⟳ Replace' : '+ Upload'}</div>
+        <input type="file" accept="${st.accept}" data-slot="${slot}" class="slot-file-input" style="display:none"/>
+      </label>
+      <div class="slot-foot">
+        <span class="slot-label">${st.label}</span>
+        ${sizeStr ? `<span class="slot-size">${sizeStr}</span>` : ''}
+        ${filled ? `<button class="slot-del" data-slot="${slot}" title="Remove">✕</button>` : ''}
       </div>`;
     grid.appendChild(card);
   }
 
-  // Bind file inputs
-  grid.querySelectorAll('.slot-input').forEach(input => {
-    input.addEventListener('change', async e => {
+  // File input events
+  grid.querySelectorAll('.slot-file-input').forEach(inp => {
+    inp.addEventListener('change', async e => {
       const file = e.target.files?.[0]; if (!file) return;
       await handleUpload(file, e.target.dataset.slot);
       e.target.value = '';
     });
   });
 
-  // Bind clear buttons
-  grid.querySelectorAll('.card-clear').forEach(btn => {
+  // Delete events
+  grid.querySelectorAll('.slot-del').forEach(btn => {
     btn.addEventListener('click', async e => {
+      e.preventDefault(); e.stopPropagation();
       const slot = btn.dataset.slot;
       if (!confirm(`Remove ${slot}?`)) return;
       await window.AvatarBuilder.deleteAsset(slot);
       window.dispatchEvent(new CustomEvent('immortail:asset-updated', { detail:{ slot } }));
-      renderSlots(_expr);
-      log(`Removed ${slot}`, 'inf');
+      plog(`Removed ${slot}`, 'inf');
+      await refreshAll();
     });
   });
 }
 
-async function handleUpload(file, slot) {
-  log(`Processing ${file.name}…`, 'inf');
-  try {
-    await window.AvatarBuilder.addMedia(file, slot);
-    log(`✓ ${file.name} → ${slot}`, 'ok');
-    showToast('Asset saved ✓');
-    renderSlots(_expr);
-  } catch (e) {
-    log(`✗ ${file.name}: ${e.message}`, 'err');
-    showToast(e.message, true);
+// ── Tab counts ────────────────────────────────────────────────────────────
+async function updateTabCounts() {
+  for (const expr of ['idle','happy','sad','excited']) {
+    let count = 0;
+    for (const st of SLOT_TYPES) {
+      const url = await window.AvatarBuilder.getAssetURL(`${st.key}:${expr}`);
+      if (url) count++;
+    }
+    const el = document.getElementById(`count-${expr}`);
+    if (el) el.textContent = `${count}/4`;
   }
 }
 
-function bindDrop() {
-  const zone = document.getElementById('big-drop');
-  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('active'); });
-  zone.addEventListener('dragleave', () => zone.classList.remove('active'));
+// ── Upload handler ────────────────────────────────────────────────────────
+async function handleUpload(file, slot) {
+  plog(`Processing ${file.name}…`, 'inf');
+  try {
+    const r = await window.AvatarBuilder.addMedia(file, slot);
+    plog(`✓ ${file.name} (${(r.size/1024).toFixed(0)}KB) → ${slot}`, 'ok');
+    showToast('Saved ✓');
+    await refreshAll();
+    updateVCStatus();
+  } catch (err) {
+    plog(`✗ ${file.name}: ${err.message}`, 'err');
+    showToast(err.message, true);
+  }
+}
+
+// ── Drag & drop ───────────────────────────────────────────────────────────
+function bindEvents() {
+  // Expression tabs
+  document.querySelectorAll('.etab').forEach(tab => {
+    tab.addEventListener('click', async () => {
+      document.querySelectorAll('.etab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      _expr = tab.dataset.expr;
+      window.Animator.setExpression(_expr);
+      await renderSlotGrid(_expr);
+    });
+  });
+
+  const zone = document.getElementById('drop-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('over'));
   zone.addEventListener('drop', async e => {
-    e.preventDefault(); zone.classList.remove('active');
-    const files = [...e.dataTransfer.files];
-    for (const file of files) {
+    e.preventDefault(); zone.classList.remove('over');
+    for (const file of [...e.dataTransfer.files]) {
       const slot = _autoSlot(file, _expr);
-      if (!slot) { log(`✗ ${file.name}: unknown type`, 'err'); continue; }
+      if (!slot) { plog(`✗ ${file.name}: unsupported type`, 'err'); continue; }
       await handleUpload(file, slot);
     }
   });
-  // Also make the zone a click target for file picker
   zone.addEventListener('click', () => {
     const inp = document.createElement('input');
     inp.type = 'file'; inp.multiple = true; inp.accept = 'image/*,video/*,audio/*';
     inp.addEventListener('change', async e => {
       for (const file of [...(e.target.files||[])]) {
         const slot = _autoSlot(file, _expr);
-        if (!slot) { log(`✗ ${file.name}: unknown type`, 'err'); continue; }
+        if (!slot) { plog(`✗ ${file.name}: unsupported`, 'err'); continue; }
         await handleUpload(file, slot);
       }
     });
@@ -274,12 +434,127 @@ function _autoSlot(file, expr) {
   return null;
 }
 
-function log(msg, type='inf') {
-  const el = document.getElementById('process-log'); if (!el) return;
+// ── VCStatus ──────────────────────────────────────────────────────────────
+async function updateVCStatus() {
+  const hasBody = !!(await window.AvatarBuilder.getAssetURL('body:idle'));
+  const hasAI   = !!(await window.Storage.loadAIConfig().catch(()=>null));
+  const btn     = document.getElementById('btn-generate');
+  const dot     = document.getElementById('vc-dot');
+  const txt     = document.getElementById('vc-status-text');
+  if (!hasBody) {
+    if (dot) dot.className = 'vc-dot';
+    if (txt) txt.textContent = 'Upload a body photo first';
+    if (btn) btn.disabled = true;
+  } else if (!hasAI) {
+    if (dot) dot.className = 'vc-dot';
+    if (txt) txt.textContent = 'Connect AI in setup to generate virtual copy';
+    if (btn) btn.disabled = true;
+  } else {
+    if (dot) dot.className = 'vc-dot ready';
+    if (txt) txt.textContent = 'Ready — will use AI to describe and animate your dog';
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── AI Virtual Copy generation ────────────────────────────────────────────
+async function generateVirtualCopy() {
+  const btn = document.getElementById('btn-generate');
+  const dot = document.getElementById('vc-dot');
+  const txt = document.getElementById('vc-status-text');
+  const res = document.getElementById('vc-result');
+
+  btn.disabled = true;
+  dot.className = 'vc-dot thinking';
+  txt.textContent = 'AI is imagining your dog in this scene…';
+
+  const currentEnv = window.Animator.getEnvironment();
+  const envs = window.Animator.getEnvironments();
+  const envLabel = envs[currentEnv]?.label || currentEnv;
+
+  // Build prompt from what we know about the dog
+  const state    = await window.Storage.loadState().catch(()=>({name:'Rex',expression:'idle',bond:30,energy:75}));
+  const memories = await window.Storage.loadMemory().catch(()=>[]);
+  const lastFew  = memories.slice(-4).map(m=>`${m.role==='user'?'Owner':'Dog'}: ${m.content}`).join('\n');
+
+  const prompt = `You are describing a virtual animated dog companion named ${state.name||'Rex'} in vivid, playful detail.
+
+The dog's current mood is ${state.expression}. Bond with owner: ${Math.round(state.bond)}/100. Energy: ${Math.round(state.energy)}/100.
+Recent interactions:
+${lastFew || '(none yet)'}
+
+Describe EXACTLY what ${state.name||'Rex'} is doing right now in this environment: ${envLabel}
+
+Write 2-3 short sentences. Be specific, sensory, and fun. Describe physical movements, sounds, smells, and reactions to the environment. Stay fully in character as a dog.
+Then on a new line starting with "SCENE:", write one sentence describing the visual scene around the dog (weather, lighting, surroundings).`;
+
+  try {
+    const aiState = { name:state.name||'Rex', expression:state.expression||'idle', energy:state.energy||75, bond:state.bond||30 };
+    // Call AI directly with custom prompt (bypass persona builder)
+    const reply = await window.AI.ask(prompt, aiState, []);
+    if (!reply) throw new Error('No response from AI');
+
+    // Display result
+    res.textContent = reply;
+    res.classList.remove('hidden');
+
+    dot.className = 'vc-dot ready';
+    txt.textContent = `Scene generated for ${envLabel} ✓`;
+
+    // Save virtual copy
+    const id = `vc_${Date.now()}`;
+    await window.AvatarBuilder.saveVirtualCopy({
+      id, env: currentEnv, envLabel, expression: state.expression,
+      dogName: state.name||'Rex', text: reply, ts: Date.now()
+    });
+    await loadVCGallery();
+    await updateStorageBar();
+    showToast('Virtual scene saved ✓');
+  } catch (err) {
+    dot.className = 'vc-dot error';
+    txt.textContent = 'Generation failed — ' + err.message;
+    showToast('AI failed: ' + err.message, true);
+  }
+  btn.disabled = false;
+}
+
+// ── Virtual copy gallery ──────────────────────────────────────────────────
+async function loadVCGallery() {
+  const copies = await window.AvatarBuilder.listVirtualCopies().catch(()=>[]);
+  const gallery = document.getElementById('vc-gallery');
+  if (!gallery) return;
+  gallery.innerHTML = '';
+  if (!copies.length) {
+    gallery.innerHTML = '<div class="plog-row plog-inf" style="padding:0.3rem">No scenes yet — generate one above.</div>';
+    return;
+  }
+  copies.sort((a,b)=>b.ts-a.ts).forEach(vc => {
+    const item = document.createElement('div');
+    item.className = 'vc-item';
+    const envs = window.Animator.getEnvironments();
+    const envLabel = envs[vc.env]?.label || vc.envLabel || vc.env;
+    item.innerHTML = `
+      <div class="vc-item-env">${envLabel.split(' ')[0]}</div>
+      <div class="vc-item-body">
+        <div class="vc-item-label">${vc.dogName} · ${envLabel} · ${vc.expression}</div>
+        <div class="vc-item-text">${vc.text}</div>
+      </div>
+      <button class="vc-item-del" data-id="${vc.id}" title="Delete">✕</button>`;
+    item.querySelector('.vc-item-del').addEventListener('click', async e => {
+      await window.AvatarBuilder.deleteVirtualCopy(vc.id);
+      await loadVCGallery();
+      await updateStorageBar();
+    });
+    gallery.appendChild(item);
+  });
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────
+function plog(msg, type='inf') {
+  const el = document.getElementById('proc-log'); if (!el) return;
   const row = document.createElement('div');
-  row.className = `log-row log-${type}`; row.textContent = msg;
+  row.className = `plog-row plog-${type}`; row.textContent = msg;
   el.prepend(row);
-  while (el.children.length > 10) el.removeChild(el.lastChild);
+  while (el.children.length > 12) el.removeChild(el.lastChild);
 }
 
 function showToast(msg, err=false) {
@@ -290,6 +565,14 @@ function showToast(msg, err=false) {
   requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
   setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),350); }, 2200);
 }
+
+// Refresh canvas size on resize
+window.addEventListener('resize', () => {
+  const c = document.getElementById('preview-canvas');
+  if (!c) return;
+  c.width  = c.offsetWidth;
+  c.height = c.offsetHeight;
+});
 </script>
 </body>
 </html>
