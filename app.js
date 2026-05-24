@@ -67,6 +67,9 @@ window.addEventListener('load', async () => {
   updateAIChip();
   checkInstallability();
   handleURLActions();
+  // Restore saved environment + sliders
+  await loadAndApplyEnv();
+  await _restoreEnvSliders();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -599,18 +602,184 @@ function bindEvents() {
     showToast(`${files.length} file(s) processed`);
   });
 
-  // Environment quick buttons (sidebar)
-  document.querySelectorAll('.env-qbtn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.env-qbtn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const env = btn.dataset.env;
-      if (window.Animator?.setEnvironment) window.Animator.setEnvironment(env);
-      const badge = document.getElementById('env-badge');
-      if (badge) badge.textContent = btn.title;
-    });
+  // Backdrop button → open env modal
+  document.getElementById('backdrop-btn')?.addEventListener('click', openEnvModal);
+
+  // Env modal close
+  document.getElementById('close-env')?.addEventListener('click', closeEnvModal);
+  document.getElementById('env-overlay')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('env-overlay')) closeEnvModal();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEnvModal(); });
+
+  // Time-of-day slider
+  const todSlider = document.getElementById('env-tod');
+  const todVal    = document.getElementById('env-tod-val');
+  todSlider?.addEventListener('input', () => {
+    const h = parseInt(todSlider.value);
+    const pct = (h / 23 * 100).toFixed(0);
+    todSlider.style.setProperty('--pct', pct + '%');
+    todVal.textContent = `${String(h).padStart(2,'0')}:00`;
+    // Pass to animator for lighting modulation
+    window.Animator?.setTimeOfDay?.(h);
+    window.Storage.setConfig('env_tod', h).catch(()=>{});
+  });
+
+  // Weather intensity slider
+  const intSlider = document.getElementById('env-intensity');
+  const intVal    = document.getElementById('env-intensity-val');
+  const intLabels = ['Light','Medium','Heavy'];
+  intSlider?.addEventListener('input', () => {
+    const v = parseInt(intSlider.value);
+    const pct = ((v-1)/2*100).toFixed(0);
+    intSlider.style.setProperty('--pct', pct + '%');
+    intVal.textContent = intLabels[v-1] || 'Medium';
+    window.Animator?.setWeatherIntensity?.(v);
+    window.Storage.setConfig('env_intensity', v).catch(()=>{});
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ENVIRONMENT MODAL
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Mini canvas preview renders for each environment card
+const _envPreviews = {}; // envId → { canvas, ctx, rafId }
+
+function _stopAllPreviews() {
+  Object.values(_envPreviews).forEach(p => {
+    if (p.rafId) cancelAnimationFrame(p.rafId);
+  });
+}
+
+function _startCardPreview(envId, canvas) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width  = canvas.offsetWidth  || 130;
+  canvas.height = canvas.offsetHeight || 98;
+
+  const envDefs = window.Animator?.getEnvironments?.() || {};
+  const env     = envDefs[envId];
+  if (!env?.bg) { ctx.fillStyle = '#111'; ctx.fillRect(0,0,canvas.width,canvas.height); return; }
+
+  let particles = [];
+  const w = canvas.width, h = canvas.height;
+
+  // Spawn particles for weather envs
+  if (envId === 'rain')  { for(let i=0;i<20;i++) particles.push({x:Math.random()*w,y:Math.random()*h,speed:6+Math.random()*4,wx:-0.8-Math.random()}); }
+  if (envId === 'snow')  { for(let i=0;i<18;i++) particles.push({x:Math.random()*w,y:Math.random()*h*0.7,size:Math.random()*1.5+0.5,speed:0.4+Math.random()*0.5,wobble:Math.random()*2+0.5,phase:Math.random()*Math.PI*2}); }
+  if (envId === 'night' || envId === 'space') { for(let i=0;i<40;i++) particles.push({x:Math.random()*w,y:Math.random()*h,size:Math.random()*1.2+0.3,speed:Math.random()*2+0.4,phase:Math.random()*Math.PI*2}); }
+
+  const loop = (ts) => {
+    const t = ts / 1000;
+    ctx.save();
+    ctx.scale(w/512, h/512);  // scale the full-size env renderer to our mini canvas
+    // Override particle ref so env functions work on mini canvas particles
+    const saved = window._miniParticles;
+    window._miniParticles = particles;
+    try { env.bg(ctx, 512, 512, t, particles); } catch(_) {}
+    window._miniParticles = saved;
+    ctx.restore();
+    // Simple mini dog silhouette
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    const dogX = w * 0.5, dogY = h * 0.62 + Math.sin(t * 1.1) * 1.5;
+    ctx.beginPath();
+    ctx.ellipse(dogX, dogY, w*0.12, h*0.11, 0, 0, Math.PI*2); ctx.fill(); // body
+    ctx.beginPath();
+    ctx.ellipse(dogX + w*0.09, dogY - h*0.07, w*0.07, h*0.07, 0.3, 0, Math.PI*2); ctx.fill(); // head
+    // ear
+    ctx.beginPath();
+    ctx.ellipse(dogX + w*0.14, dogY - h*0.1, w*0.025, h*0.04, -0.5, 0, Math.PI*2); ctx.fill();
+    _envPreviews[envId].rafId = requestAnimationFrame(loop);
+  };
+  _envPreviews[envId] = { canvas, ctx, rafId: requestAnimationFrame(loop) };
+}
+
+function buildEnvModal() {
+  const grid = document.getElementById('env-card-grid');
+  if (!grid || grid.dataset.built) return;
+  grid.dataset.built = '1';
+
+  const envDefs = window.Animator?.getEnvironments?.() || {};
+  const currentEnv = window.Animator?.getEnvironment?.() || 'home';
+
+  Object.entries(envDefs).forEach(([id, env]) => {
+    const card = document.createElement('div');
+    card.className = 'env-card' + (id === currentEnv ? ' active' : '');
+    card.dataset.env = id;
+    card.innerHTML = `<canvas></canvas><div class="env-card-label">${env.label}</div>`;
+    grid.appendChild(card);
+
+    // Start mini preview after paint
+    requestAnimationFrame(() => {
+      const c = card.querySelector('canvas');
+      if (c) { c.width = c.offsetWidth || 130; c.height = c.offsetHeight || 98; _startCardPreview(id, c); }
+    });
+
+    card.addEventListener('click', () => selectEnv(id));
+  });
+}
+
+async function selectEnv(envId) {
+  // Update animator
+  if (window.Animator?.setEnvironment) window.Animator.setEnvironment(envId);
+
+  // Update badge on stage
+  const envDefs = window.Animator?.getEnvironments?.() || {};
+  const env     = envDefs[envId];
+  const badge   = document.getElementById('env-badge');
+  if (badge && env) badge.textContent = env.label;
+
+  // Update backdrop button
+  const icon  = document.getElementById('backdrop-icon');
+  const label = document.getElementById('backdrop-label');
+  if (icon && env)  icon.textContent  = env.label.split(' ')[0];
+  if (label && env) label.textContent = env.label.split(' ').slice(1).join(' ');
+
+  // Highlight active card
+  document.querySelectorAll('.env-card').forEach(c => c.classList.toggle('active', c.dataset.env === envId));
+
+  // Show/hide weather intensity slider
+  const intensityRow = document.getElementById('env-intensity-row');
+  const intensityLabel = document.getElementById('env-intensity-label');
+  if (intensityRow) {
+    const isWeather = envId === 'rain' || envId === 'snow';
+    intensityRow.style.display = isWeather ? 'flex' : 'none';
+    if (intensityLabel) intensityLabel.textContent = envId === 'snow' ? '❄ Intensity' : '☔ Intensity';
+  }
+
+  // Persist to IDB
+  try { await window.Storage.saveEnv(envId); } catch(_) {}
+}
+
+function openEnvModal() {
+  const overlay = document.getElementById('env-overlay');
+  if (!overlay) return;
+  buildEnvModal();
+  overlay.classList.add('open');
+  // Restart previews (they may have been stopped)
+  setTimeout(() => {
+    document.querySelectorAll('#env-card-grid .env-card canvas').forEach(c => {
+      const id = c.closest('.env-card')?.dataset.env;
+      if (id && !_envPreviews[id]?.rafId) _startCardPreview(id, c);
+    });
+  }, 50);
+}
+
+function closeEnvModal() {
+  document.getElementById('env-overlay')?.classList.remove('open');
+  _stopAllPreviews();
+}
+
+async function loadAndApplyEnv() {
+  try {
+    const envId = await window.Storage.loadEnv();
+    if (envId && envId !== 'home') {
+      await selectEnv(envId);
+    }
+  } catch(_) {}
+}
+
 
 // Auto-detect which slot a dropped file belongs to
 function _autoDetectSlot(file, expr) {
@@ -654,6 +823,33 @@ function updateAIChip() {
   const hasKey = prov === 'ollama' || !!window.AI._keys?.[prov]; // rough check
   if (dot)   dot.className     = `status-dot ${hasKey ? 'connected' : 'disconnected'}`;
   if (label) label.textContent = info?.label || prov || 'No AI';
+}
+
+
+async function _restoreEnvSliders() {
+  try {
+    const [tod, intensity] = await Promise.all([
+      window.Storage.getConfig('env_tod', 12),
+      window.Storage.getConfig('env_intensity', 2)
+    ]);
+    const todEl = document.getElementById('env-tod');
+    const todValEl = document.getElementById('env-tod-val');
+    if (todEl) {
+      todEl.value = tod;
+      todEl.style.setProperty('--pct', (tod/23*100).toFixed(0) + '%');
+    }
+    if (todValEl) todValEl.textContent = `${String(tod).padStart(2,'0')}:00`;
+    window.Animator?.setTimeOfDay?.(tod);
+
+    const intEl = document.getElementById('env-intensity');
+    const intValEl = document.getElementById('env-intensity-val');
+    if (intEl) {
+      intEl.value = intensity;
+      intEl.style.setProperty('--pct', ((intensity-1)/2*100).toFixed(0) + '%');
+    }
+    if (intValEl) intValEl.textContent = ['Light','Medium','Heavy'][intensity-1] || 'Medium';
+    window.Animator?.setWeatherIntensity?.(intensity);
+  } catch(_) {}
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
