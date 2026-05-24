@@ -579,3 +579,99 @@ textarea.field-input { resize: vertical; min-height: 76px; font-size: 0.73rem; f
 }
 .asset-dot.dot-ok      { background: #4ade80; border-color: #4ade80; box-shadow: 0 0 5px rgba(74,222,128,0.4); }
 .asset-dot.dot-missing { background: var(--copper); border-color: var(--copper); }
+
+/* ── Install chip (header) ─────────────────────────────────────────────── */
+.install-chip {
+  background: linear-gradient(135deg, var(--gold-faint), rgba(212,175,55,0.08));
+  border: 1px solid var(--gold); border-radius: 999px;
+  color: var(--gold); font-size: 0.7rem; font-family: var(--font);
+  padding: 0.22rem 0.7rem; cursor: pointer; font-weight: 600;
+  transition: background 0.2s, box-shadow 0.2s;
+  display: flex; align-items: center; gap: 0.3rem;
+}
+.install-chip:hover { background: rgba(212,175,55,0.14); box-shadow: 0 0 10px var(--gold-glow); }
+
+/* ── Provider tabs ─────────────────────────────────────────────────────── */
+.provider-tabs { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+.provider-tab {
+  background: rgba(212,175,55,0.04); border: 1px solid var(--border-dim);
+  border-radius: var(--r-sm); color: var(--text-muted);
+  font-family: var(--font); font-size: 0.75rem; padding: 0.35rem 0.7rem;
+  cursor: pointer; transition: all 0.18s;
+}
+.provider-tab:hover  { border-color: var(--gold); color: var(--gold); }
+.provider-tab.active { background: rgba(212,175,55,0.13); border-color: var(--gold); color: var(--gold); font-weight: 600; }
+
+/* ── Provider panels ───────────────────────────────────────────────────── */
+.provider-panel { display: flex; flex-direction: column; gap: 0.5rem; }
+.provider-panel.hidden { display: none; }
+.provider-help { font-size: 0.7rem; color: var(--text-muted); }
+.provider-help a { color: var(--gold); text-decoration: none; }
+.provider-help a:hover { text-decoration: underline; }
+.provider-help code { background: rgba(255,255,255,0.05); border-radius: 4px; padding: 0.1rem 0.35rem; font-size: 0.7rem; color: var(--amber); }
+.field-select {
+  appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='%238a7060'%3E%3Cpath d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 0.7rem center; padding-right: 2rem;
+}
+.field-select option { background: #1c1510; color: var(--cream); }
+
+/* ── Toggle switches ───────────────────────────────────────────────────── */
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.4rem 0; gap: 1rem;
+}
+.toggle-label  { font-size: 0.8rem; color: var(--cream); margin-bottom: 0.1rem; }
+.toggle-switch { flex-shrink: 0; position: relative; display: inline-block; width: 40px; height: 22px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute; inset: 0; border-radius: 999px;
+  background: rgba(255,255,255,0.08); border: 1px solid var(--border-dim);
+  transition: background 0.2s; cursor: pointer;
+}
+.toggle-thumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--text-muted); transition: transform 0.2s, background 0.2s;
+}
+.toggle-switch input:checked + .toggle-track { background: rgba(212,175,55,0.25); border-color: var(--gold); }
+.toggle-switch input:checked + .toggle-track .toggle-thumb { transform: translateX(18px); background: var(--gold); }
+
+/* ── Volume range ──────────────────────────────────────────────────────── */
+.range-row { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.2rem 0; }
+.range-slider {
+  width: 100%; height: 4px; appearance: none;
+  background: rgba(255,255,255,0.08); border-radius: 999px; outline: none;
+}
+.range-slider::-webkit-slider-thumb {
+  appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--gold); cursor: pointer;
+  box-shadow: 0 0 6px var(--gold-glow);
+}
+
+/* ── Asset / cache status ──────────────────────────────────────────────── */
+.asset-status-list, #cache-status-list { display: flex; flex-direction: column; gap: 0.28rem; }
+.asset-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.72rem; color: var(--text-muted); font-family: monospace; }
+.asset-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: rgba(255,255,255,0.08); border: 1px solid var(--border-dim); transition: background 0.3s; }
+.asset-dot.dot-ok      { background: #4ade80; border-color: #4ade80; box-shadow: 0 0 5px rgba(74,222,128,0.4); }
+.asset-dot.dot-missing { background: var(--copper); border-color: var(--copper); }
+.cache-summary { font-size: 0.75rem; color: var(--cream); font-weight: 600; margin-bottom: 0.3rem; }
+
+/* ── SW Update banner ──────────────────────────────────────────────────── */
+.update-banner {
+  position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%);
+  background: var(--brown-deep); border: 1px solid var(--gold);
+  border-radius: var(--r-md); padding: 0.6rem 1rem;
+  display: flex; align-items: center; gap: 0.7rem;
+  font-size: 0.8rem; color: var(--cream); z-index: 9000;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+.update-banner button {
+  background: var(--gold); color: #0B0F14; border: none;
+  border-radius: var(--r-sm); padding: 0.3rem 0.7rem;
+  font-family: var(--font); font-size: 0.75rem; font-weight: 700; cursor: pointer;
+}
+#update-dismiss { background: transparent !important; color: var(--text-muted) !important; padding: 0.3rem !important; }
+
+/* ── Install action button ─────────────────────────────────────────────── */
+.install-action-btn { width: 100%; justify-content: center; }
