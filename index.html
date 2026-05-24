@@ -116,16 +116,12 @@
       <button class="action-btn" id="btn-rest">💤 Rest</button>
     </div>
 
-    <!-- Environment quick-switch -->
-    <div class="env-quick-row" id="env-quick-row">
-      <button class="env-qbtn active" data-env="home"  title="Home">🏠</button>
-      <button class="env-qbtn" data-env="park"   title="Park">🌿</button>
-      <button class="env-qbtn" data-env="night"  title="Night">🌙</button>
-      <button class="env-qbtn" data-env="rain"   title="Rain">🌧</button>
-      <button class="env-qbtn" data-env="snow"   title="Snow">❄</button>
-      <button class="env-qbtn" data-env="space"  title="Space">🚀</button>
-      <button class="env-qbtn" data-env="beach"  title="Beach">🏖</button>
-    </div>
+    <!-- Backdrop button -->
+    <button class="backdrop-btn" id="backdrop-btn" title="Change backdrop">
+      <span id="backdrop-icon">🏠</span>
+      <span id="backdrop-label">Home</span>
+      <span class="backdrop-chevron">›</span>
+    </button>
 
   </aside>
 
@@ -518,5 +514,39 @@
 <script src="avatar-builder.js"></script>
 <script src="animator.js"></script>
 <script src="app.js"></script>
+
+  <!-- ENVIRONMENT MODAL -->
+  <div class="modal-overlay" id="env-overlay" role="dialog" aria-modal="true" aria-label="Choose environment">
+    <div class="modal env-modal">
+
+      <div class="modal-header">
+        <div class="modal-title">🌍 Backdrop</div>
+        <button class="modal-close" id="close-env" aria-label="Close">✕</button>
+      </div>
+
+      <p class="env-modal-desc">Choose your companion's world. Saved automatically — persists between sessions.</p>
+
+      <div class="env-card-grid" id="env-card-grid">
+        <!-- filled by buildEnvModal() -->
+      </div>
+
+      <div class="env-sliders">
+        <!-- Time of day -->
+        <div class="env-slider-row">
+          <span class="env-slider-label">🕐 Time of day</span>
+          <input type="range" id="env-tod" min="0" max="23" value="12" step="1" class="env-range"/>
+          <span class="env-slider-val" id="env-tod-val">12:00</span>
+        </div>
+
+        <!-- Weather intensity (rain / snow only) -->
+        <div class="env-slider-row" id="env-intensity-row" style="display:none">
+          <span class="env-slider-label" id="env-intensity-label">☔ Intensity</span>
+          <input type="range" id="env-intensity" min="1" max="3" value="2" step="1" class="env-range"/>
+          <span class="env-slider-val" id="env-intensity-val">Medium</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
 </body>
 </html>
