@@ -675,3 +675,59 @@ textarea.field-input { resize: vertical; min-height: 76px; font-size: 0.73rem; f
 
 /* ── Install action button ─────────────────────────────────────────────── */
 .install-action-btn { width: 100%; justify-content: center; }
+
+/* ── Avatar Builder modal ─────────────────────────────────────────────────── */
+.builder-modal { max-width: 680px; }
+.builder-intro { font-size:0.78rem; color:var(--text-muted); line-height:1.5; margin-bottom:0.8rem; }
+
+/* Worker status */
+.worker-status { display:flex; align-items:center; gap:0.5rem; font-size:0.72rem; color:var(--text-muted); margin-bottom:0.7rem; }
+
+/* Expression tabs */
+.expr-tabs { display:flex; gap:0.35rem; flex-wrap:wrap; margin-bottom:0.8rem; }
+.expr-tab { background:rgba(212,175,55,0.04); border:1px solid var(--border-dim); border-radius:var(--r-sm); color:var(--text-muted); font-family:var(--font); font-size:0.78rem; padding:0.4rem 0.85rem; cursor:pointer; transition:all 0.18s; }
+.expr-tab:hover  { border-color:var(--gold); color:var(--gold); }
+.expr-tab.active { background:rgba(212,175,55,0.13); border-color:var(--gold); color:var(--gold); font-weight:600; }
+
+/* Builder panels */
+.builder-panel.hidden { display:none; }
+
+/* Slot grid */
+.slot-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); gap:0.7rem; margin-bottom:0.8rem; }
+.slot-card { background:rgba(212,175,55,0.03); border:1px solid var(--border-dim); border-radius:var(--r-md); padding:0.65rem; display:flex; flex-direction:column; gap:0.45rem; transition:border-color 0.2s; }
+.slot-card:hover { border-color:rgba(212,175,55,0.3); }
+
+.slot-preview { width:100%; aspect-ratio:1; border-radius:var(--r-sm); background:rgba(0,0,0,0.3); border:1px dashed var(--border-dim); display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; transition:border-color 0.2s; }
+.slot-preview.has-asset { border-style:solid; border-color:var(--gold); }
+.slot-empty-icon { font-size:1.8rem; opacity:0.4; }
+
+.slot-label { font-size:0.7rem; color:var(--text-muted); text-align:center; }
+.slot-actions { display:flex; gap:0.35rem; flex-wrap:wrap; }
+.upload-label { font-size:0.7rem !important; padding:0.28rem 0.55rem !important; cursor:pointer; flex:1; text-align:center; }
+.upload-label input[type=file] { display:none; }
+.slot-clear-btn { background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.25); border-radius:var(--r-sm); color:#f87171; font-size:0.7rem; padding:0.28rem 0.45rem; cursor:pointer; }
+.slot-clear-btn:hover { background:rgba(248,113,113,0.2); }
+
+/* Drop zone */
+.drop-zone { border:1.5px dashed var(--border-dim); border-radius:var(--r-md); padding:1.2rem; text-align:center; color:var(--text-muted); cursor:default; transition:all 0.2s; margin-bottom:0.7rem; }
+.drop-zone.drop-active { border-color:var(--gold); background:var(--gold-faint); color:var(--cream); }
+.drop-icon { font-size:1.6rem; margin-bottom:0.4rem; }
+.drop-text { font-size:0.72rem; line-height:1.4; }
+
+/* Process log */
+.process-log { display:flex; flex-direction:column; gap:0.25rem; max-height:100px; overflow-y:auto; }
+.log-row { font-size:0.7rem; color:#4ade80; display:flex; gap:0.4rem; font-family:monospace; }
+.log-row.log-error { color:#f87171; }
+
+/* Dog canvas layer */
+#dog-canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:2; display:none; }
+
+/* Stage hint */
+.stage-hint { position:absolute; bottom:6px; left:50%; transform:translateX(-50%); font-size:0.6rem; color:var(--text-muted); opacity:0.45; pointer-events:none; white-space:nowrap; }
+
+/* Builder btn in header */
+#builder-btn { font-size:1.1rem; }
+
+/* ── Extra provider tab styles (many tabs) ─────────────────────────────── */
+.provider-tabs { flex-wrap:wrap; }
+.provider-tab  { font-size:0.7rem; padding:0.28rem 0.55rem; }
