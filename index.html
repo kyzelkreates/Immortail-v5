@@ -38,7 +38,7 @@
         <span id="api-status-label">No AI</span>
       </div>
       <button class="icon-btn" id="builder-btn" title="Build Your Dog">🐶</button>
-      <a class="icon-btn" href="upload.html" title="Upload Assets" style="text-decoration:none;line-height:1">📤</a>
+      <a class="icon-btn" href="upload.html" title="Dog Studio — Upload assets & create AI scenes" style="text-decoration:none;line-height:1" id="studio-btn">🎨</a>
       <button class="icon-btn" id="settings-btn" title="Settings">⚙</button>
     </div>
   </header>
@@ -90,6 +90,7 @@
       <!-- z4: Video loop fallback -->
       <video id="dog-video-overlay" autoplay loop muted playsinline aria-hidden="true"></video>
 
+      <div class="env-label-badge" id="env-badge">🏠 Home</div>
       <div class="stage-hint">tap to pet</div>
     </div>
 
@@ -113,6 +114,17 @@
       <button class="action-btn" id="btn-feed">🍖 Feed</button>
       <button class="action-btn" id="btn-play">🎾 Play</button>
       <button class="action-btn" id="btn-rest">💤 Rest</button>
+    </div>
+
+    <!-- Environment quick-switch -->
+    <div class="env-quick-row" id="env-quick-row">
+      <button class="env-qbtn active" data-env="home"  title="Home">🏠</button>
+      <button class="env-qbtn" data-env="park"   title="Park">🌿</button>
+      <button class="env-qbtn" data-env="night"  title="Night">🌙</button>
+      <button class="env-qbtn" data-env="rain"   title="Rain">🌧</button>
+      <button class="env-qbtn" data-env="snow"   title="Snow">❄</button>
+      <button class="env-qbtn" data-env="space"  title="Space">🚀</button>
+      <button class="env-qbtn" data-env="beach"  title="Beach">🏖</button>
     </div>
 
   </aside>
