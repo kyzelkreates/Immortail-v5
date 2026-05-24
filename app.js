@@ -598,6 +598,18 @@ function bindEvents() {
     await refreshBuilderPreviews();
     showToast(`${files.length} file(s) processed`);
   });
+
+  // Environment quick buttons (sidebar)
+  document.querySelectorAll('.env-qbtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.env-qbtn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const env = btn.dataset.env;
+      if (window.Animator?.setEnvironment) window.Animator.setEnvironment(env);
+      const badge = document.getElementById('env-badge');
+      if (badge) badge.textContent = btn.title;
+    });
+  });
 }
 
 // Auto-detect which slot a dropped file belongs to
