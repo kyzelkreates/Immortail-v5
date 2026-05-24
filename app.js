@@ -503,3 +503,137 @@ function showSplashError(msg) {
   err.textContent = msg;
   if (s) s.appendChild(err);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MULTI-AI SETTINGS UI (appended to app.js)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function bindAISettings() {
+  const $ = (id) => document.getElementById(id);
+
+  // Provider tab switching
+  document.querySelectorAll('.provider-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.provider-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.provider-panel').forEach(p => p.classList.add('hidden'));
+      tab.classList.add('active');
+      const panel = $(`panel-${tab.dataset.provider}`);
+      if (panel) panel.classList.remove('hidden');
+    });
+  });
+
+  // Save key buttons (OpenAI, OpenRouter, Groq)
+  document.querySelectorAll('[data-save-key]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const provider = btn.dataset.saveKey;
+      const keyEl    = $(`key-${provider}`);
+      const key      = keyEl?.value.trim();
+      if (!key) { showToast('Enter a key first', true); return; }
+      window.AI.setKey(provider, key);
+      window.AI.saveConfig();
+      showToast(`${provider} key saved ✓`);
+    });
+  });
+
+  // Ollama ping
+  $('ollama-ping')?.addEventListener('click', async () => {
+    const statusEl = $('ollama-status');
+    const baseUrl  = $('key-ollama')?.value.trim() || 'http://localhost:11434';
+    if (statusEl) statusEl.textContent = 'Pinging…';
+    const result = await window.AI.pingOllama(baseUrl);
+    if (result.ok) {
+      window.AI.setKey('ollama', baseUrl);
+      window.AI.saveConfig();
+      const modelSel = $('model-ollama');
+      // Populate with live models if we got them
+      if (result.models.length && modelSel) {
+        modelSel.innerHTML = result.models
+          .map(m => `<option value="${m}">${m}</option>`).join('');
+      }
+      if (statusEl) statusEl.innerHTML = `<span style="color:#4ade80">✓ Connected — ${result.models.length} model(s) available</span>`;
+    } else {
+      if (statusEl) statusEl.innerHTML = `<span style="color:#f87171">✗ Not reachable — is Ollama running?</span>`;
+    }
+  });
+
+  // Activate provider
+  $('activate-provider')?.addEventListener('click', () => {
+    const activeTab = document.querySelector('.provider-tab.active');
+    if (!activeTab) return;
+    const provider = activeTab.dataset.provider;
+    const modelSel = $(`model-${provider}`);
+    const model    = modelSel?.value || null;
+    window.AI.setProvider(provider, model);
+    window.AI.saveConfig();
+    updateAIChip();
+    showToast(`${provider} activated ✓`);
+    closeSettings();
+  });
+
+  // Restore saved UI state
+  const cfg = window.AI;
+  const savedProvider = cfg.getProvider?.() || 'openai';
+  const tab = document.querySelector(`[data-provider="${savedProvider}"]`);
+  if (tab) tab.click();
+}
+
+function updateAIChip() {
+  const dot   = document.getElementById('api-status-dot');
+  const label = document.getElementById('api-status-label');
+  const prov  = window.AI.getProvider?.();
+  const provs = window.AI.getProviders?.() || {};
+  const info  = provs[prov];
+
+  // Check if provider has credentials
+  const hasKey = prov === 'ollama'
+    ? true  // Ollama doesn't need a key
+    : !!localStorage.getItem('immortail_ai_config');
+
+  if (dot)   dot.className     = `status-dot ${hasKey ? 'connected' : 'disconnected'}`;
+  if (label) label.textContent = hasKey ? (info?.label || prov) : 'No AI';
+}
+
+// Check which assets are present and show dots in settings
+function checkAssets() {
+  const assets = [
+    { id: 'ast-body_idle',   src: 'assets/dog/body_idle.png' },
+    { id: 'ast-body_happy',  src: 'assets/dog/body_happy.png' },
+    { id: 'ast-body_sad',    src: 'assets/dog/body_sad.png' },
+    { id: 'ast-eyes_idle',   src: 'assets/dog/eyes_idle.png' },
+    { id: 'ast-eyes_happy',  src: 'assets/dog/eyes_happy.png' },
+    { id: 'ast-eyes_sad',    src: 'assets/dog/eyes_sad.png' },
+    { id: 'ast-tail_wag',    src: 'assets/dog/tail_wag.webm' },
+    { id: 'ast-blink',       src: 'assets/dog/blink.webm' },
+    { id: 'ast-bounce',      src: 'assets/dog/bounce.webm' },
+  ];
+  assets.forEach(({ id, src }) => {
+    const dot = document.getElementById(id);
+    if (!dot) return;
+    const img = new Image();
+    img.onload  = () => { dot.classList.add('dot-ok');  };
+    img.onerror = () => { dot.classList.add('dot-missing'); };
+    img.src = src + '?t=' + Date.now();
+  });
+}
+
+// Hook into existing openSettings / bindEvents
+const _origOpenSettings = openSettings;
+openSettings = function() {
+  _origOpenSettings();
+  checkAssets();
+  // Restore key field hints
+  ['openai','openrouter','groq'].forEach(p => {
+    const el = document.getElementById(`key-${p}`);
+    if (el) el.placeholder = el.placeholder; // keep as-is
+  });
+};
+
+// Run after bindEvents
+document.addEventListener('DOMContentLoaded', () => {}, false);
+// Extend bindEvents — called from boot
+const _origBind = bindEvents;
+bindEvents = function() {
+  _origBind();
+  bindAISettings();
+  updateAIChip();
+};
