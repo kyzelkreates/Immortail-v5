@@ -1,26 +1,65 @@
 {
+  "id": "/",
   "name": "IMMORTAIL™",
   "short_name": "IMMORTAIL",
   "description": "Your AI dog companion — always with you.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#0B0F14",
   "theme_color": "#D4AF37",
   "orientation": "portrait-primary",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["lifestyle", "entertainment"],
+  "prefer_related_applications": false,
+  "handle_links": "preferred",
   "icons": [
+    { "src": "assets/icons/icon-72.png",   "sizes": "72x72",   "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-96.png",   "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-128.png",  "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-144.png",  "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-152.png",  "sizes": "152x152", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-192.png",  "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/icons/icon-384.png",  "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png",  "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [
     {
-      "src": "assets/icons/icon-192.png",
-      "sizes": "192x192",
+      "src": "assets/icons/screenshot-wide.png",
+      "sizes": "1280x720",
       "type": "image/png",
-      "purpose": "any maskable"
+      "form_factor": "wide",
+      "label": "IMMORTAIL Desktop"
     },
     {
-      "src": "assets/icons/icon-512.png",
-      "sizes": "512x512",
+      "src": "assets/icons/screenshot-mobile.png",
+      "sizes": "390x844",
       "type": "image/png",
-      "purpose": "any maskable"
+      "form_factor": "narrow",
+      "label": "IMMORTAIL Mobile"
     }
   ],
-  "categories": ["lifestyle", "entertainment"],
-  "lang": "en"
+  "shortcuts": [
+    {
+      "name": "Feed Rex",
+      "short_name": "Feed",
+      "description": "Feed your companion",
+      "url": "/?action=feed",
+      "icons": [{ "src": "assets/icons/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Play",
+      "short_name": "Play",
+      "description": "Play with your companion",
+      "url": "/?action=play",
+      "icons": [{ "src": "assets/icons/icon-96.png", "sizes": "96x96" }]
+    }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": { "text": "chat" }
+  }
 }
