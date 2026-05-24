@@ -1,20 +1,35 @@
-// IMMORTAIL™ Storage v2
-// IndexedDB — single source of truth
-// Stores: dog state + chat memory
+// IMMORTAIL™ Storage v3
+// IndexedDB — fully defensive, never throws to caller on missing data
 // Export/Import: base64-encoded migration key
 
-const DB_NAME    = 'immortail_db';
-const DB_VERSION = 2;
+const DB_NAME      = 'immortail_db';
+const DB_VERSION   = 2;
 const STORE_STATE  = 'dog_state';
 const STORE_MEMORY = 'memory';
 const MEMORY_CAP   = 200;
 
 let _db = null;
 
-// ── Open DB ────────────────────────────────────────────────────────────────
+// ── Open DB — with timeout guard ───────────────────────────────────────────
 function openDB() {
   return new Promise((resolve, reject) => {
     if (_db) { resolve(_db); return; }
+
+    // Bail if IndexedDB not available (private mode on some browsers)
+    if (!window.indexedDB) {
+      reject(new Error('IndexedDB not supported in this browser/mode'));
+      return;
+    }
+
+    let settled = false;
+    const done = (fn) => (...args) => { if (!settled) { settled = true; fn(...args); } };
+
+    // 8 second timeout — prevents hanging forever if IDB is locked
+    const timer = setTimeout(
+      done(reject.bind(null, new Error('IndexedDB open timed out'))),
+      8000
+    );
+
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
     req.onupgradeneeded = (e) => {
@@ -27,9 +42,19 @@ function openDB() {
       }
     };
 
-    req.onsuccess  = (e) => { _db = e.target.result; resolve(_db); };
-    req.onerror    = (e) => reject(e.target.error);
-    req.onblocked  = ()  => reject(new Error('IndexedDB blocked'));
+    req.onsuccess = (e) => {
+      clearTimeout(timer);
+      _db = e.target.result;
+
+      // Handle unexpected DB close (e.g. browser wipes storage)
+      _db.onversionchange = () => { _db.close(); _db = null; };
+      _db.onclose = () => { _db = null; };
+
+      done(resolve)(_db);
+    };
+
+    req.onerror  = (e) => { clearTimeout(timer); done(reject)(e.target.error); };
+    req.onblocked = () => { clearTimeout(timer); done(reject)(new Error('IndexedDB blocked — close other tabs and retry')); };
   });
 }
 
@@ -37,11 +62,11 @@ function openDB() {
 async function saveState(state) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx    = db.transaction(STORE_STATE, 'readwrite');
-    const store = tx.objectStore(STORE_STATE);
-    store.put({ key: 'main', ...state });
+    const tx = db.transaction(STORE_STATE, 'readwrite');
+    tx.objectStore(STORE_STATE).put({ key: 'main', ...state });
     tx.oncomplete = () => resolve();
     tx.onerror    = (e) => reject(e.target.error);
+    tx.onabort    = (e) => reject(new Error('saveState transaction aborted'));
   });
 }
 
@@ -114,13 +139,11 @@ async function importKey(keyStr) {
   } catch {
     throw new Error('Invalid migration key — cannot decode.');
   }
-  if (!payload?.v || !payload?.state) {
+  if (!payload || !payload.v || !payload.state) {
     throw new Error('Invalid migration key — missing required fields.');
   }
-
   await saveState(payload.state);
   await clearMemory();
-
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx    = db.transaction(STORE_MEMORY, 'readwrite');
