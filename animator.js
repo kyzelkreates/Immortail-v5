@@ -10,9 +10,11 @@ const BLEND_FRAMES = 10;
 let _canvas = null, _ctx = null, _rafId = null;
 let _cur = 'idle', _next = null, _blending = false, _blendF = 0;
 let _lastTs = 0;
-let _currentEnv = 'home';
-let _envOffset  = 0; // parallax scroll
-let _particles  = []; // weather particles
+let _currentEnv      = 'home';
+let _envOffset       = 0;
+let _particles       = [];
+let _timeOfDay       = 12; // 0-23
+let _weatherIntensity = 2;  // 1-3
 
 const _exprAssets = {
   idle:    { video: null, bitmap: null },
@@ -237,16 +239,20 @@ function _spawnStars(w, h) {
 }
 function _spawnRain(w, h) {
   _particles = [];
-  for (let i = 0; i < 60; i++) {
+  const count = _weatherIntensity === 1 ? 25 : _weatherIntensity === 3 ? 100 : 60;
+  const speedMul = _weatherIntensity === 1 ? 0.6 : _weatherIntensity === 3 ? 1.5 : 1;
+  for (let i = 0; i < count; i++) {
     _particles.push({ x: Math.random()*w, y: Math.random()*h,
-      speed: 8+Math.random()*6, wx: -1-Math.random()*1.5 });
+      speed: (8+Math.random()*6)*speedMul, wx: (-1-Math.random()*1.5)*speedMul });
   }
 }
 function _spawnSnow(w, h) {
   _particles = [];
-  for (let i = 0; i < 50; i++) {
+  const count = _weatherIntensity === 1 ? 20 : _weatherIntensity === 3 ? 90 : 50;
+  const sizeMul = _weatherIntensity === 1 ? 0.6 : _weatherIntensity === 3 ? 1.6 : 1;
+  for (let i = 0; i < count; i++) {
     _particles.push({ x: Math.random()*w, y: Math.random()*h*0.7,
-      size: Math.random()*2+1, speed: 0.5+Math.random(), wobble: Math.random()*2+0.5, phase: Math.random()*Math.PI*2 });
+      size: (Math.random()*2+1)*sizeMul, speed: 0.5+Math.random(), wobble: Math.random()*2+0.5, phase: Math.random()*Math.PI*2 });
   }
 }
 function _drawCloud(ctx, x, y, r) {
@@ -367,6 +373,20 @@ function _render(t) {
     _ctx.fillStyle = env.ambient;
     _ctx.fillRect(0, 0, w, h);
   }
+
+  // 6. Time-of-day darkness overlay
+  const bright = _todBrightness();
+  if (bright < 0.95) {
+    _ctx.fillStyle = `rgba(0,0,10,${(1 - bright) * 0.65})`;
+    _ctx.fillRect(0, 0, w, h);
+  }
+  // Golden hour tint (6-8 and 17-19)
+  const hr = _timeOfDay;
+  if ((hr >= 6 && hr <= 8) || (hr >= 17 && hr <= 19)) {
+    const goldenAlpha = 0.12 * (1 - Math.abs(hr - (hr < 12 ? 7 : 18)));
+    _ctx.fillStyle = `rgba(255,160,40,${Math.max(0,goldenAlpha)})`;
+    _ctx.fillRect(0, 0, w, h);
+  }
 }
 
 function _drawDog(expr, w, dogH, dogY, t, gravity) {
@@ -424,8 +444,27 @@ window.addEventListener('immortail:asset-updated', async e => {
   await refreshSlot(e.detail.slot);
 });
 
+function setTimeOfDay(h) {
+  _timeOfDay = Math.max(0, Math.min(23, h));
+}
+
+function setWeatherIntensity(v) {
+  _weatherIntensity = Math.max(1, Math.min(3, v));
+  // Respawn particles scaled to intensity
+  _particles = [];
+}
+
+// Compute a lighting multiplier from time of day (0=night, 1=noon)
+function _todBrightness() {
+  // Peak at 12, dark at 0/23
+  const h = _timeOfDay;
+  if (h >= 6 && h <= 18) return 0.5 + 0.5 * Math.sin((h - 6) / 12 * Math.PI);
+  return 0.08;
+}
+
 window.Animator = {
   init, setExpression, setEnvironment, getEnvironment, getEnvironments,
+  setTimeOfDay, setWeatherIntensity,
   refreshSlot, refreshAllAssets: _loadAll, loadFaceOverlays: _loadFaces,
   hasUserAssets, snapshot, stop, isActive,
   get currentEnv() { return _currentEnv; }
