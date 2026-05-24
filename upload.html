@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <meta name="theme-color" content="#D4AF37"/>
+  <title>IMMORTAIL™ — Upload Assets</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    body { overflow:auto; background:radial-gradient(ellipse 100% 60% at 50% 0%,#161c24,#0B0F14 55%); }
+    .upload-wrap { max-width:720px; margin:0 auto; padding:1.5rem 1.2rem 4rem; }
+
+    /* Top bar */
+    .upload-topbar { display:flex; align-items:center; justify-content:space-between; padding:0.8rem 0 1.4rem; }
+    .back-btn { color:var(--text-muted); font-size:0.8rem; cursor:pointer; text-decoration:none; display:flex; align-items:center; gap:0.4rem; transition:color 0.2s; }
+    .back-btn:hover { color:var(--gold); }
+
+    /* Live preview */
+    .preview-bar { display:flex; align-items:center; gap:1rem; background:var(--glass-panel); border:1px solid var(--border-dim); border-radius:var(--r-lg); padding:1rem 1.2rem; margin-bottom:1.4rem; }
+    .preview-dog { width:80px; height:80px; border-radius:var(--r-md); background:#0d0b08; border:1px solid var(--border-dim); overflow:hidden; position:relative; flex-shrink:0; }
+    .preview-dog canvas { width:100%; height:100%; }
+    .preview-dog img   { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+    .preview-info { flex:1; }
+    .preview-name { font-size:1rem; font-weight:700; color:var(--gold); }
+    .preview-desc { font-size:0.72rem; color:var(--text-muted); margin-top:0.2rem; line-height:1.4; }
+    .expr-switcher { display:flex; gap:0.4rem; }
+    .expr-btn { background:rgba(212,175,55,0.05); border:1px solid var(--border-dim); border-radius:var(--r-sm); color:var(--text-muted); font-size:0.72rem; padding:0.28rem 0.55rem; cursor:pointer; transition:all 0.15s; }
+    .expr-btn.active { background:rgba(212,175,55,0.15); border-color:var(--gold); color:var(--gold); }
+
+    /* Upload zones */
+    .section-title { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin:1.2rem 0 0.6rem; }
+
+    .upload-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:0.75rem; }
+
+    .upload-card { background:var(--glass-panel); border:1px solid var(--border-dim); border-radius:var(--r-md); overflow:hidden; transition:border-color 0.2s; }
+    .upload-card:hover { border-color:rgba(212,175,55,0.35); }
+    .upload-card.has-asset { border-color:rgba(74,222,128,0.5); }
+
+    .card-preview { width:100%; aspect-ratio:1; background:#0d0b08; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+    .card-preview img, .card-preview video { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
+    .card-empty { font-size:2.2rem; opacity:0.3; }
+    .card-check { position:absolute; top:6px; right:6px; background:#4ade80; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:#0B0F14; font-weight:700; }
+
+    .card-body { padding:0.6rem 0.75rem 0.75rem; }
+    .card-label { font-size:0.72rem; font-weight:600; color:var(--cream); margin-bottom:0.4rem; }
+    .card-type  { font-size:0.65rem; color:var(--text-muted); margin-bottom:0.5rem; }
+    .card-btns  { display:flex; gap:0.35rem; }
+    .card-upload { flex:1; }
+    .card-clear  { background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.2); border-radius:var(--r-sm); color:#f87171; font-size:0.7rem; padding:0.28rem 0.5rem; cursor:pointer; }
+    .card-clear:hover { background:rgba(248,113,113,0.18); }
+
+    /* Big drop zone */
+    .big-drop { border:2px dashed var(--border-dim); border-radius:var(--r-lg); padding:2rem 1.5rem; text-align:center; cursor:pointer; transition:all 0.2s; margin-top:1rem; }
+    .big-drop:hover, .big-drop.active { border-color:var(--gold); background:var(--gold-faint); }
+    .big-drop-icon { font-size:2.5rem; margin-bottom:0.6rem; }
+    .big-drop-text { font-size:0.85rem; color:var(--cream); font-weight:600; }
+    .big-drop-sub  { font-size:0.72rem; color:var(--text-muted); margin-top:0.3rem; }
+
+    /* Log */
+    .process-log { margin-top:0.8rem; display:flex; flex-direction:column; gap:0.2rem; max-height:120px; overflow-y:auto; }
+    .log-row { font-size:0.7rem; font-family:monospace; display:flex; gap:0.5rem; padding:0.15rem 0; }
+    .log-ok  { color:#4ade80; }
+    .log-err { color:#f87171; }
+    .log-inf { color:var(--text-muted); }
+
+    /* Worker badge */
+    .worker-badge { display:inline-flex; align-items:center; gap:0.4rem; font-size:0.7rem; color:var(--text-muted); background:rgba(0,0,0,0.25); border:1px solid var(--border-dim); border-radius:var(--r-sm); padding:0.25rem 0.7rem; }
+  </style>
+</head>
+<body>
+
+<div class="upload-wrap">
+
+  <!-- Top bar -->
+  <div class="upload-topbar">
+    <a class="back-btn" href="index.html">← Back to companion</a>
+    <div class="worker-badge">
+      <span id="worker-dot" style="width:6px;height:6px;border-radius:50%;background:var(--copper);display:inline-block"></span>
+      <span id="worker-label">Media processor loading…</span>
+    </div>
+  </div>
+
+  <!-- Live preview -->
+  <div class="preview-bar">
+    <div class="preview-dog" id="preview-stage">
+      <canvas id="preview-canvas"></canvas>
+    </div>
+    <div class="preview-info">
+      <div class="preview-name" id="preview-name">Rex</div>
+      <div class="preview-desc">Upload photos, videos &amp; sounds below. Changes apply instantly.<br/>All stored locally on your device — nothing uploaded to servers.</div>
+    </div>
+    <div class="expr-switcher">
+      <button class="expr-btn active" data-expr="idle" onclick="switchExpr('idle',this)">😐</button>
+      <button class="expr-btn" data-expr="happy" onclick="switchExpr('happy',this)">😄</button>
+      <button class="expr-btn" data-expr="sad" onclick="switchExpr('sad',this)">😢</button>
+      <button class="expr-btn" data-expr="excited" onclick="switchExpr('excited',this)">🐾</button>
+    </div>
+  </div>
+
+  <!-- ── Slots ── -->
+  <div id="slots-container">
+    <!-- Filled by JS per expression -->
+  </div>
+
+  <!-- Big drop zone -->
+  <div class="big-drop" id="big-drop">
+    <div class="big-drop-icon">📂</div>
+    <div class="big-drop-text">Drop any files here</div>
+    <div class="big-drop-sub">Images → body layer · Videos → animation · Audio → sounds · Auto-assigned to current expression tab</div>
+  </div>
+
+  <!-- Log -->
+  <div class="process-log" id="process-log"></div>
+
+</div>
+
+<script src="storage.js"></script>
+<script src="avatar-builder.js"></script>
+<script src="animator.js"></script>
+<script>
+
+const SLOT_DEFS = [
+  { slot:'body:{e}',  label:'Body Photo',     type:'image', accept:'image/*',  icon:'🐶', desc:'Main dog body, any angle' },
+  { slot:'face:{e}',  label:'Face / Eyes',    type:'image', accept:'image/*',  icon:'👁',  desc:'Face layer overlaid on body' },
+  { slot:'video:{e}', label:'Animation',      type:'video', accept:'video/*',  icon:'🎬', desc:'Looping animation (WebM / MP4)' },
+  { slot:'audio:{e}', label:'Sound',          type:'audio', accept:'audio/*',  icon:'🔊', desc:'Sound played on mood change' },
+];
+
+let _expr = 'idle';
+let _previewAnim = null;
+
+window.addEventListener('load', async () => {
+  await window.Storage.init();
+  await window.AvatarBuilder.init();
+
+  // Load dog name
+  const state = await window.Storage.loadState();
+  if (state?.name) document.getElementById('preview-name').textContent = state.name;
+
+  // Start mini preview animator
+  const canvas = document.getElementById('preview-canvas');
+  if (canvas) {
+    canvas.width = 160; canvas.height = 160;
+    if (window.Animator) await window.Animator.init(canvas);
+  }
+
+  renderSlots('idle');
+  checkWorker();
+  bindDrop();
+});
+
+function checkWorker() {
+  setTimeout(() => {
+    const ok = window.AvatarBuilder.workerReady;
+    document.getElementById('worker-dot').style.background = ok ? '#4ade80' : '#f87171';
+    document.getElementById('worker-label').textContent = ok ? 'Media processor ready ✓' : 'Basic mode (Chrome required for bg-removal)';
+  }, 1200);
+}
+
+function switchExpr(expr, btn) {
+  _expr = expr;
+  document.querySelectorAll('.expr-btn').forEach(b => b.classList.toggle('active', b===btn));
+  if (window.Animator) window.Animator.setExpression(expr);
+  renderSlots(expr);
+}
+
+async function renderSlots(expr) {
+  const container = document.getElementById('slots-container');
+  if (!container) return;
+  container.innerHTML = `<div class="section-title">Assets for "${expr}" expression</div><div class="upload-grid" id="grid-${expr}"></div>`;
+  const grid = document.getElementById(`grid-${expr}`);
+
+  for (const def of SLOT_DEFS) {
+    const slot = def.slot.replace('{e}', expr);
+    const url  = await window.AvatarBuilder.getAssetURL(slot);
+    const card = document.createElement('div');
+    card.className = 'upload-card' + (url ? ' has-asset' : '');
+    card.dataset.slot = slot;
+
+    let previewHtml = `<div class="card-empty">${def.icon}</div>`;
+    if (url) {
+      if (def.type === 'image')      previewHtml = `<img src="${url}" loading="lazy"/>`;
+      else if (def.type === 'video') previewHtml = `<video src="${url}" autoplay loop muted playsinline></video>`;
+      else if (def.type === 'audio') previewHtml = `<div style="font-size:1.8rem">🔊</div>`;
+    }
+
+    card.innerHTML = `
+      <div class="card-preview">
+        ${previewHtml}
+        ${url ? '<div class="card-check">✓</div>' : ''}
+      </div>
+      <div class="card-body">
+        <div class="card-label">${def.label}</div>
+        <div class="card-type">${def.desc}</div>
+        <div class="card-btns">
+          <label class="btn-secondary card-upload" style="font-size:0.7rem;padding:0.3rem 0.5rem;cursor:pointer;text-align:center;display:block">
+            ${url ? '⟳ Replace' : '+ Upload'}
+            <input type="file" accept="${def.accept}" data-slot="${slot}" class="slot-input" style="display:none"/>
+          </label>
+          ${url ? `<button class="card-clear" data-slot="${slot}">✕</button>` : ''}
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  }
+
+  // Bind file inputs
+  grid.querySelectorAll('.slot-input').forEach(input => {
+    input.addEventListener('change', async e => {
+      const file = e.target.files?.[0]; if (!file) return;
+      await handleUpload(file, e.target.dataset.slot);
+      e.target.value = '';
+    });
+  });
+
+  // Bind clear buttons
+  grid.querySelectorAll('.card-clear').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      const slot = btn.dataset.slot;
+      if (!confirm(`Remove ${slot}?`)) return;
+      await window.AvatarBuilder.deleteAsset(slot);
+      window.dispatchEvent(new CustomEvent('immortail:asset-updated', { detail:{ slot } }));
+      renderSlots(_expr);
+      log(`Removed ${slot}`, 'inf');
+    });
+  });
+}
+
+async function handleUpload(file, slot) {
+  log(`Processing ${file.name}…`, 'inf');
+  try {
+    await window.AvatarBuilder.addMedia(file, slot);
+    log(`✓ ${file.name} → ${slot}`, 'ok');
+    showToast('Asset saved ✓');
+    renderSlots(_expr);
+  } catch (e) {
+    log(`✗ ${file.name}: ${e.message}`, 'err');
+    showToast(e.message, true);
+  }
+}
+
+function bindDrop() {
+  const zone = document.getElementById('big-drop');
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('active'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('active'));
+  zone.addEventListener('drop', async e => {
+    e.preventDefault(); zone.classList.remove('active');
+    const files = [...e.dataTransfer.files];
+    for (const file of files) {
+      const slot = _autoSlot(file, _expr);
+      if (!slot) { log(`✗ ${file.name}: unknown type`, 'err'); continue; }
+      await handleUpload(file, slot);
+    }
+  });
+  // Also make the zone a click target for file picker
+  zone.addEventListener('click', () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.multiple = true; inp.accept = 'image/*,video/*,audio/*';
+    inp.addEventListener('change', async e => {
+      for (const file of [...(e.target.files||[])]) {
+        const slot = _autoSlot(file, _expr);
+        if (!slot) { log(`✗ ${file.name}: unknown type`, 'err'); continue; }
+        await handleUpload(file, slot);
+      }
+    });
+    inp.click();
+  });
+}
+
+function _autoSlot(file, expr) {
+  if (file.type.startsWith('image/')) return `body:${expr}`;
+  if (file.type.startsWith('video/')) return `video:${expr}`;
+  if (file.type.startsWith('audio/')) return `audio:${expr}`;
+  return null;
+}
+
+function log(msg, type='inf') {
+  const el = document.getElementById('process-log'); if (!el) return;
+  const row = document.createElement('div');
+  row.className = `log-row log-${type}`; row.textContent = msg;
+  el.prepend(row);
+  while (el.children.length > 10) el.removeChild(el.lastChild);
+}
+
+function showToast(msg, err=false) {
+  document.querySelector('.toast')?.remove();
+  const t = document.createElement('div');
+  t.className = 'toast' + (err?' toast-error':''); t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),350); }, 2200);
+}
+</script>
+</body>
+</html>
