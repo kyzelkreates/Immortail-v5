@@ -527,3 +527,55 @@ textarea.field-input { resize: vertical; min-height: 76px; font-size: 0.73rem; f
   #main { grid-row: 3; }
   .bubble { max-width: 84%; }
 }
+
+/* ── Provider tabs ─────────────────────────────────────────────────────── */
+.provider-tabs {
+  display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.6rem;
+}
+.provider-tab {
+  background: rgba(212,175,55,0.04); border: 1px solid var(--border-dim);
+  border-radius: var(--r-sm); color: var(--text-muted);
+  font-family: var(--font); font-size: 0.75rem; padding: 0.35rem 0.7rem;
+  cursor: pointer; transition: all 0.18s;
+}
+.provider-tab:hover { border-color: var(--gold); color: var(--gold); }
+.provider-tab.active {
+  background: rgba(212,175,55,0.13); border-color: var(--gold);
+  color: var(--gold); font-weight: 600;
+}
+
+/* ── Provider panels ───────────────────────────────────────────────────── */
+.provider-panel { display: flex; flex-direction: column; gap: 0.5rem; }
+.provider-panel.hidden { display: none; }
+
+.provider-help {
+  font-size: 0.7rem; color: var(--text-muted);
+}
+.provider-help a { color: var(--gold); text-decoration: none; }
+.provider-help a:hover { text-decoration: underline; }
+.provider-help code {
+  background: rgba(255,255,255,0.05); border-radius: 4px;
+  padding: 0.1rem 0.35rem; font-size: 0.7rem; color: var(--amber);
+}
+
+.field-select {
+  appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='%238a7060'%3E%3Cpath d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 0.7rem center;
+  padding-right: 2rem;
+}
+.field-select option { background: #1c1510; color: var(--cream); }
+
+/* ── Asset status list ─────────────────────────────────────────────────── */
+.asset-status-list { display: flex; flex-direction: column; gap: 0.28rem; }
+.asset-row {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.72rem; color: var(--text-muted); font-family: monospace;
+}
+.asset-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(255,255,255,0.08); border: 1px solid var(--border-dim);
+  transition: background 0.3s;
+}
+.asset-dot.dot-ok      { background: #4ade80; border-color: #4ade80; box-shadow: 0 0 5px rgba(74,222,128,0.4); }
+.asset-dot.dot-missing { background: var(--copper); border-color: var(--copper); }
