@@ -38,6 +38,7 @@
         <span id="api-status-label">No AI</span>
       </div>
       <button class="icon-btn" id="builder-btn" title="Build Your Dog">🐶</button>
+      <a class="icon-btn" href="upload.html" title="Upload Assets" style="text-decoration:none;line-height:1">📤</a>
       <button class="icon-btn" id="settings-btn" title="Settings">⚙</button>
     </div>
   </header>
@@ -480,6 +481,25 @@
   </div>
 </div>
 
+<script>
+// First-launch: redirect to setup if no AI config has been saved
+(async () => {
+  if (location.pathname.includes('setup') || location.pathname.includes('upload')) return;
+  try {
+    const req = indexedDB.open('immortail_db', 1);
+    req.onsuccess = async (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('config')) { location.href = 'setup.html'; return; }
+      const tx  = db.transaction('config', 'readonly');
+      const get = tx.objectStore('config').get('ai_config');
+      get.onsuccess = (ev) => {
+        if (!ev.target.result) location.href = 'setup.html';
+      };
+    };
+    req.onupgradeneeded = () => { location.href = 'setup.html'; };
+  } catch(_) {}
+})();
+</script>
 <script src="storage.js"></script>
 <script src="engine.js"></script>
 <script src="ai.js"></script>
