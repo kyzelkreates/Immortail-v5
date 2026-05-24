@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <meta name="theme-color" content="#D4AF37"/>
+  <title>IMMORTAIL™ Setup</title>
+  <link rel="manifest" href="manifest.json"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    /* ── Setup-specific overrides ── */
+    body { overflow:auto; background:radial-gradient(ellipse 100% 80% at 50% 0%,#161c24,#0B0F14 55%); }
+    .setup-wrap { max-width:640px; margin:0 auto; padding:2rem 1.2rem 4rem; }
+    .setup-logo { text-align:center; padding:2.5rem 0 2rem; }
+    .setup-logo .wordmark { font-size:2rem; font-weight:800; letter-spacing:0.12em; color:var(--gold); text-shadow:0 0 20px var(--gold-glow); }
+    .setup-logo .sub { font-size:0.75rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-muted); margin-top:0.3rem; }
+
+    /* Steps */
+    .step { background:var(--glass-panel); border:1px solid var(--border-dim); border-radius:var(--r-lg); padding:1.4rem 1.6rem; margin-bottom:1.2rem; }
+    .step-header { display:flex; align-items:center; gap:0.8rem; margin-bottom:1rem; }
+    .step-num { width:28px; height:28px; border-radius:50%; background:rgba(212,175,55,0.12); border:1px solid var(--gold); color:var(--gold); font-size:0.78rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .step-title { font-size:0.95rem; font-weight:700; color:var(--cream); }
+    .step-sub { font-size:0.72rem; color:var(--text-muted); margin-top:0.1rem; }
+
+    /* Status badges */
+    .status-badge { display:inline-flex; align-items:center; gap:0.35rem; font-size:0.72rem; border-radius:999px; padding:0.22rem 0.7rem; border:1px solid; }
+    .badge-ok     { border-color:#4ade80; color:#4ade80; background:rgba(74,222,128,0.08); }
+    .badge-warn   { border-color:var(--amber); color:var(--amber); background:rgba(255,191,105,0.08); }
+    .badge-err    { border-color:#f87171; color:#f87171; background:rgba(248,113,113,0.08); }
+    .badge-idle   { border-color:var(--border-dim); color:var(--text-muted); background:transparent; }
+
+    /* Ollama panel */
+    .ollama-status { padding:0.8rem 1rem; background:rgba(0,0,0,0.25); border-radius:var(--r-md); border:1px solid var(--border-dim); margin:0.7rem 0; font-size:0.8rem; color:var(--text-muted); min-height:44px; }
+    .model-pill { display:inline-flex; align-items:center; gap:0.4rem; background:rgba(212,175,55,0.1); border:1px solid var(--border-dim); border-radius:var(--r-sm); padding:0.22rem 0.6rem; font-size:0.72rem; color:var(--cream); margin:0.15rem; cursor:pointer; transition:all 0.18s; }
+    .model-pill:hover { border-color:var(--gold); color:var(--gold); }
+    .model-pill.active { border-color:var(--gold); background:rgba(212,175,55,0.2); color:var(--gold); }
+    .install-cmd { font-family:monospace; font-size:0.8rem; background:rgba(0,0,0,0.4); border:1px solid var(--border-dim); border-radius:var(--r-sm); padding:0.6rem 0.9rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem; }
+    .install-cmd code { color:var(--amber); flex:1; word-break:break-all; }
+    .copy-btn { flex-shrink:0; }
+
+    /* Provider cards */
+    .provider-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(175px,1fr)); gap:0.6rem; }
+    .prov-card { background:rgba(0,0,0,0.25); border:1px solid var(--border-dim); border-radius:var(--r-md); padding:0.9rem 1rem; cursor:pointer; transition:all 0.18s; position:relative; }
+    .prov-card:hover { border-color:rgba(212,175,55,0.4); }
+    .prov-card.active { border-color:var(--gold); background:rgba(212,175,55,0.08); }
+    .prov-card.has-key { border-color:#4ade80; }
+    .prov-name { font-size:0.85rem; font-weight:600; color:var(--cream); }
+    .prov-sub  { font-size:0.68rem; color:var(--text-muted); margin-top:0.1rem; }
+    .prov-tier { position:absolute; top:0.5rem; right:0.6rem; font-size:0.6rem; padding:0.1rem 0.4rem; border-radius:999px; font-weight:600; }
+    .tier-free  { background:rgba(74,222,128,0.15); color:#4ade80; }
+    .tier-paid  { background:rgba(184,115,51,0.15); color:var(--copper); }
+    .tier-local { background:rgba(212,175,55,0.15); color:var(--gold); }
+
+    /* Key entry panel */
+    .key-panel { margin-top:0.8rem; padding:1rem; background:rgba(0,0,0,0.25); border:1px solid var(--border-dim); border-radius:var(--r-md); }
+    .key-panel.hidden { display:none; }
+    .key-help { font-size:0.7rem; color:var(--text-muted); margin-top:0.4rem; }
+    .key-help a { color:var(--gold); text-decoration:none; }
+
+    /* Model selector */
+    .model-row { display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.5rem; }
+
+    /* Nav */
+    .setup-nav { display:flex; gap:0.7rem; margin-top:1.5rem; }
+    .btn-launch { flex:1; padding:0.85rem; font-size:1rem; font-weight:700; background:linear-gradient(135deg,#B87333,#D4AF37); color:#0B0F14; border:none; border-radius:var(--r-md); cursor:pointer; letter-spacing:0.05em; transition:opacity 0.2s; }
+    .btn-launch:hover { opacity:0.9; }
+    .btn-skip { padding:0.85rem 1.2rem; background:transparent; border:1px solid var(--border-dim); border-radius:var(--r-md); color:var(--text-muted); font-family:var(--font); cursor:pointer; font-size:0.85rem; transition:border-color 0.2s; }
+    .btn-skip:hover { border-color:var(--gold); color:var(--cream); }
+  </style>
+</head>
+<body>
+
+<div class="setup-wrap">
+
+  <div class="setup-logo">
+    <div class="wordmark">IMMORTAIL<span class="tm">™</span></div>
+    <div class="sub">First-time setup</div>
+  </div>
+
+  <!-- ── STEP 1: Local AI (Ollama) ── -->
+  <div class="step" id="step-ollama">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div>
+        <div class="step-title">🦙 Local AI (Recommended)</div>
+        <div class="step-sub">Runs on your device — free, private, no internet needed</div>
+      </div>
+      <div id="ollama-badge" class="status-badge badge-idle" style="margin-left:auto;white-space:nowrap">Not checked</div>
+    </div>
+
+    <div class="ollama-status" id="ollama-status-msg">
+      Checking for Ollama… <span id="ollama-spin">⏳</span>
+    </div>
+
+    <!-- Install instructions (shown if not found) -->
+    <div id="ollama-install-guide" class="hidden">
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.6rem">
+        Install Ollama on your computer — one command:
+      </div>
+      <div class="install-cmd" id="cmd-mac">
+        <code>brew install ollama &amp;&amp; ollama serve</code>
+        <button class="btn-secondary copy-btn" onclick="copyCmd('brew install ollama && ollama serve')">Copy</button>
+      </div>
+      <div style="font-size:0.7rem;color:var(--text-muted);margin:0.4rem 0">or download from <a href="https://ollama.com" target="_blank" style="color:var(--gold)">ollama.com</a> (Windows / Linux / Mac)</div>
+      <div class="install-cmd" style="margin-top:0.3rem">
+        <code>ollama pull llama3 &amp;&amp; ollama serve</code>
+        <button class="btn-secondary copy-btn" onclick="copyCmd('ollama pull llama3 && ollama serve')">Copy</button>
+      </div>
+    </div>
+
+    <!-- Model list (shown if found) -->
+    <div id="ollama-models-section" class="hidden">
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem">
+        Available models — click to select:
+      </div>
+      <div id="ollama-model-pills" class="model-row"></div>
+      <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.5rem">
+        Don't see one you want?
+        <span style="font-family:monospace;color:var(--amber)">ollama pull mistral</span> — then re-check.
+      </div>
+    </div>
+
+    <div style="display:flex;gap:0.5rem;margin-top:0.8rem;flex-wrap:wrap">
+      <button class="btn-secondary" id="ollama-check-btn" onclick="checkOllama()">Check Again</button>
+      <div style="display:flex;align-items:center;gap:0.5rem;flex:1">
+        <input type="text" class="field-input" id="ollama-url-input" placeholder="http://localhost:11434" style="flex:1;font-size:0.78rem"/>
+        <button class="btn-secondary" onclick="checkOllamaCustom()">Ping</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: Cloud AI ── -->
+  <div class="step" id="step-cloud">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div>
+        <div class="step-title">☁ Cloud AI (Optional)</div>
+        <div class="step-sub">Free tiers available on most. Used as fallback or instead of Ollama.</div>
+      </div>
+    </div>
+
+    <div class="provider-grid" id="provider-grid">
+      <!-- Filled by JS -->
+    </div>
+
+    <div class="key-panel hidden" id="key-panel">
+      <div style="font-size:0.8rem;font-weight:600;color:var(--cream);margin-bottom:0.5rem" id="key-panel-title"></div>
+      <div class="field-row">
+        <input type="password" class="field-input" id="key-input" placeholder="Paste your API key…" autocomplete="new-password"/>
+        <button class="btn-primary" onclick="saveKey()">Save</button>
+      </div>
+      <div class="key-help" id="key-help-text"></div>
+      <div id="model-picker" class="model-row" style="margin-top:0.6rem"></div>
+    </div>
+  </div>
+
+  <!-- ── NAV ── -->
+  <div class="setup-nav">
+    <button class="btn-skip" onclick="location.href='index.html'">Skip for now</button>
+    <button class="btn-launch" onclick="saveAndLaunch()">🐾 Save &amp; Launch</button>
+  </div>
+
+</div>
+
+<script src="storage.js"></script>
+<script src="ai.js"></script>
+<script>
+// ── Boot ──────────────────────────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  await window.Storage.init();
+  await window.AI.loadConfig();
+  buildProviderGrid();
+  checkOllama();
+});
+
+// ── Ollama check ──────────────────────────────────────────────────────────
+let _selectedOllamaModel = 'llama3';
+
+async function checkOllama(url) {
+  const badge = document.getElementById('ollama-badge');
+  const msg   = document.getElementById('ollama-status-msg');
+  const spin  = document.getElementById('ollama-spin');
+  const base  = url || document.getElementById('ollama-url-input')?.value.trim() || 'http://localhost:11434';
+
+  badge.className = 'status-badge badge-idle'; badge.textContent = 'Checking…';
+  if (msg) { msg.textContent = `Connecting to ${base}… `; msg.appendChild(spin||document.createElement('span')); }
+
+  const result = await window.AI.pingOllama(base);
+
+  if (result.ok) {
+    badge.className = 'status-badge badge-ok'; badge.textContent = `✓ Connected · ${result.models.length} models`;
+    msg.textContent = `Ollama is running at ${base}`;
+    window.AI.setKey('ollama', base);
+    showOllamaModels(result.models);
+    document.getElementById('ollama-install-guide')?.classList.add('hidden');
+  } else {
+    badge.className = 'status-badge badge-warn'; badge.textContent = '⚠ Not found';
+    msg.innerHTML = `Ollama not reachable at <strong>${base}</strong>. Install it to use local AI.`;
+    document.getElementById('ollama-install-guide')?.classList.remove('hidden');
+    document.getElementById('ollama-models-section')?.classList.add('hidden');
+  }
+}
+
+function checkOllamaCustom() {
+  const url = document.getElementById('ollama-url-input')?.value.trim();
+  checkOllama(url||undefined);
+}
+
+function showOllamaModels(models) {
+  const section = document.getElementById('ollama-models-section');
+  const pills   = document.getElementById('ollama-model-pills');
+  if (!section || !pills) return;
+  section.classList.remove('hidden');
+
+  // Merge with known models list
+  const known = window.AI.getProviders().ollama.models;
+  const all   = [...new Set([...models, ...known.filter(m=>!models.includes(m))])];
+
+  pills.innerHTML = '';
+  all.forEach(m => {
+    const pill = document.createElement('button');
+    pill.className = 'model-pill' + (m === _selectedOllamaModel ? ' active' : '');
+    pill.textContent = m;
+    if (!models.includes(m)) pill.style.opacity = '0.45'; // not installed
+    pill.title = models.includes(m) ? 'Installed ✓' : 'Not installed — run: ollama pull ' + m;
+    pill.addEventListener('click', () => {
+      _selectedOllamaModel = m;
+      document.querySelectorAll('.model-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+    pills.appendChild(pill);
+  });
+}
+
+// ── Provider grid ─────────────────────────────────────────────────────────
+let _selectedProvider = 'ollama';
+let _selectedModelMap = {};
+
+function buildProviderGrid() {
+  const grid = document.getElementById('provider-grid');
+  if (!grid) return;
+  const provs  = window.AI.getProviders();
+  const cloudProvs = Object.entries(provs).filter(([id]) => id !== 'ollama');
+
+  grid.innerHTML = '';
+  cloudProvs.forEach(([id, prov]) => {
+    const card = document.createElement('div');
+    card.className = 'prov-card' + (id === _selectedProvider ? ' active' : '');
+    card.dataset.id = id;
+    const tierClass = prov.tier === 'local' ? 'tier-local' : prov.tier === 'free' ? 'tier-free' : 'tier-paid';
+    const tierLabel = prov.tier === 'local' ? 'LOCAL' : prov.tier === 'free' ? 'FREE' : 'PAID';
+    card.innerHTML = `
+      <span class="prov-tier ${tierClass}">${tierLabel}</span>
+      <div class="prov-name">${prov.label}</div>
+      <div class="prov-sub">${prov.sublabel}</div>`;
+    card.addEventListener('click', () => selectProvider(id, prov));
+    grid.appendChild(card);
+  });
+}
+
+function selectProvider(id, prov) {
+  _selectedProvider = id;
+  document.querySelectorAll('.prov-card').forEach(c => c.classList.toggle('active', c.dataset.id === id));
+
+  const panel  = document.getElementById('key-panel');
+  const title  = document.getElementById('key-panel-title');
+  const help   = document.getElementById('key-help-text');
+  const inp    = document.getElementById('key-input');
+  const picker = document.getElementById('model-picker');
+
+  panel.classList.remove('hidden');
+  title.textContent = `${prov.label} — ${prov.keyLabel}`;
+  inp.placeholder   = prov.keyHint || 'Paste API key…';
+  inp.value         = ''; // clear
+
+  help.innerHTML = prov.link
+    ? `Get a ${prov.tier === 'free' ? 'free ' : ''}key at <a href="${prov.link}" target="_blank">${prov.link.replace('https://','')}</a>`
+    : '';
+
+  // Model picker
+  picker.innerHTML = '';
+  prov.models.forEach(m => {
+    const pill = document.createElement('button');
+    pill.className = 'model-pill' + (m === (prov.default||prov.models[0]) ? ' active' : '');
+    pill.textContent = m;
+    pill.addEventListener('click', () => {
+      _selectedModelMap[id] = m;
+      document.querySelectorAll('#model-picker .model-pill').forEach(p=>p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+    picker.appendChild(pill);
+  });
+  _selectedModelMap[id] = prov.default || prov.models[0];
+}
+
+async function saveKey() {
+  const key = document.getElementById('key-input')?.value.trim();
+  if (!key) { showSetupToast('Paste a key first', true); return; }
+  window.AI.setKey(_selectedProvider, key);
+  await window.AI.saveConfig();
+  // Mark card
+  const card = document.querySelector(`.prov-card[data-id="${_selectedProvider}"]`);
+  if (card) card.classList.add('has-key');
+  showSetupToast(`${_selectedProvider} key saved ✓`);
+}
+
+// ── Save & launch ─────────────────────────────────────────────────────────
+async function saveAndLaunch() {
+  // Pick best available provider
+  const ollamaOk = document.getElementById('ollama-badge')?.classList.contains('badge-ok');
+  if (ollamaOk) {
+    window.AI.setProvider('ollama', _selectedOllamaModel);
+  } else if (_selectedProvider !== 'ollama') {
+    window.AI.setProvider(_selectedProvider, _selectedModelMap[_selectedProvider] || null);
+  } else {
+    // Check if any cloud key was saved
+    const provs = window.AI.getProviders();
+    for (const id of ['groq','openrouter','mistral','gemini','openai','anthropic','together','cohere','huggingface','perplexity']) {
+      if (window.AI._keys?.[id]) { window.AI.setProvider(id, null); break; }
+    }
+  }
+  await window.AI.saveConfig();
+  location.href = 'index.html';
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function copyCmd(text) {
+  navigator.clipboard?.writeText(text).then(() => showSetupToast('Copied ✓')).catch(()=>{});
+}
+
+function showSetupToast(msg, err=false) {
+  document.querySelector('.toast')?.remove();
+  const t = document.createElement('div');
+  t.className = 'toast' + (err?' toast-error':''); t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),350); }, 2500);
+}
+</script>
+</body>
+</html>
