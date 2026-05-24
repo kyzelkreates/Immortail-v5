@@ -1,18 +1,16 @@
-// IMMORTAIL™ App v2
-// Boot sequence + Media Composite Avatar Engine + UI
+// IMMORTAIL™ App v3
+// Boot + Media Composite Avatar Engine + UI
+// Defensive boot: each step isolated, never crashes on missing assets
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MEDIA MANIFEST
-// Maps expression → asset paths for images, video overlays, audio
-// When real assets exist at these paths, they load automatically.
-// When missing, the SVG fallback system kicks in — no errors thrown.
 // ═══════════════════════════════════════════════════════════════════════════
 const MEDIA = {
   images: {
     idle:    'assets/dog/body_idle.png',
     happy:   'assets/dog/body_happy.png',
     sad:     'assets/dog/body_sad.png',
-    excited: 'assets/dog/body_happy.png'   // reuse happy until dedicated asset exists
+    excited: 'assets/dog/body_happy.png'
   },
   faces: {
     idle:    'assets/dog/eyes_idle.png',
@@ -34,259 +32,213 @@ const MEDIA = {
   }
 };
 
-// Audio throttle — min ms between audio plays
 const AUDIO_THROTTLE_MS = 4000;
-let _lastAudioTime = 0;
-let _audioEl = null;
-
-// Current rendered expression (avoid redundant re-renders)
+let _lastAudioTime     = 0;
+let _audioEl           = null;
 let _currentExpression = null;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BOOT SEQUENCE
+// BOOT SEQUENCE — isolated steps, never fatal-errors on recoverable issues
 // ═══════════════════════════════════════════════════════════════════════════
 window.addEventListener('load', async () => {
 
-  // 1. Service Worker
+  // Step 1 — Service Worker (non-blocking, failure is fine)
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js').catch(e =>
-      console.warn('[Boot] SW registration failed:', e)
-    );
+    navigator.serviceWorker.register('/service-worker.js')
+      .catch(e => console.warn('[Boot] SW:', e.message));
   }
 
-  // 2. IndexedDB
+  // Step 2 — Storage init
+  let storageOk = false;
   try {
     await window.Storage.init();
+    storageOk = true;
   } catch (e) {
-    console.error('[Boot] Storage init failed:', e);
-    showFatalError('Storage unavailable. Please use a modern browser.');
-    return;
+    console.error('[Boot] Storage failed:', e.message);
+    // Show degraded mode rather than hard crash
+    showSplashError('Storage unavailable — running in limited mode.');
+    // Continue anyway with in-memory fallback (engine handles null saved state)
   }
 
-  // 3 + 4. Load state → Engine init
-  let initialState;
+  // Step 3+4 — Engine init (always attempt, engine is defensive internally)
+  let initialState = null;
   try {
     initialState = await window.Engine.init(onStateChange);
   } catch (e) {
-    console.error('[Boot] Engine init failed:', e);
-    showFatalError('Engine failed to start. Please refresh.');
-    return;
+    console.error('[Boot] Engine failed:', e.message);
+    // Engine couldn't start — this is the real fatal case
+    showSplashError('Failed to start. Try refreshing, or clear your browser data for this site.');
+    return; // stop here — can't render without state
   }
 
-  // 5. UI render
-  renderState(initialState);
-  await loadAndRenderMemory();
+  // Step 5 — UI render
+  try {
+    renderState(initialState);
+    await loadAndRenderMemory();
+  } catch (e) {
+    console.warn('[Boot] UI render partial failure:', e.message);
+    // Non-fatal — app still usable
+  }
+
   hideSplash();
 
-  // 6. AI enable
-  const savedKey = localStorage.getItem('immortail_api_key');
-  if (savedKey) {
-    window.AI.setApiKey(savedKey);
-    setApiStatus(true);
+  // Step 6 — AI
+  try {
+    const savedKey = localStorage.getItem('immortail_api_key');
+    if (savedKey) {
+      window.AI.setApiKey(savedKey);
+      setApiStatus(true);
+    }
+  } catch (e) {
+    console.warn('[Boot] AI key load failed:', e.message);
   }
 
-  bindEvents();
   initAudio();
+  bindEvents();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MEDIA COMPOSITE AVATAR ENGINE
-// Renders dog as layered DOM elements: base image → face → video overlay
-// Falls back gracefully to SVG if real assets are absent
+// COMPOSITE AVATAR RENDERING
 // ═══════════════════════════════════════════════════════════════════════════
-
 function renderDog(expression) {
-  if (_currentExpression === expression) return; // no-op if no change
+  if (_currentExpression === expression) return;
   _currentExpression = expression;
 
-  const stage = document.getElementById('dog-stage');
+  try {
+    const stage = document.getElementById('dog-stage');
+    if (stage) stage.className = `dog-stage expr-${expression}`;
+    document.body.className = `mood-${expression}`;
 
-  // ── Base body image ──────────────────────────────────────────────────────
-  const baseEl = document.getElementById('dog-base-img');
-  const baseSrc = MEDIA.images[expression] || MEDIA.images.idle;
-  _setImageSrc(baseEl, baseSrc);
-
-  // ── Face/eyes overlay image ──────────────────────────────────────────────
-  const faceEl = document.getElementById('dog-face-img');
-  const faceSrc = MEDIA.faces[expression] || MEDIA.faces.idle;
-  _setImageSrc(faceEl, faceSrc);
-
-  // ── Video overlay (micro loop) ───────────────────────────────────────────
-  const videoEl = document.getElementById('dog-video-overlay');
-  const videoSrc = MEDIA.videos[expression];
-  _setVideoSrc(videoEl, videoSrc);
-
-  // ── SVG fallback expressions ─────────────────────────────────────────────
-  _updateSVGExpression(expression);
-
-  // ── Stage glow class ─────────────────────────────────────────────────────
-  stage.className = `dog-stage expr-${expression}`;
-  document.body.className = `mood-${expression}`;
+    _setImageSrc(document.getElementById('dog-base-img'), MEDIA.images[expression] || MEDIA.images.idle);
+    _setImageSrc(document.getElementById('dog-face-img'), MEDIA.faces[expression]  || MEDIA.faces.idle);
+    _setVideoSrc(document.getElementById('dog-video-overlay'), MEDIA.videos[expression] || null);
+    _updateSVGExpression(expression);
+  } catch (e) {
+    console.warn('[Render] Dog render error:', e.message);
+  }
 }
 
 function _setImageSrc(el, src) {
   if (!el || !src) return;
-  if (el.getAttribute('data-src') === src) return; // already set
+  if (el.getAttribute('data-src') === src) return;
   el.setAttribute('data-src', src);
-
   const img = new Image();
   img.onload = () => {
     el.src = src;
     el.style.display = 'block';
     el.style.opacity = '0';
-    requestAnimationFrame(() => { el.style.opacity = '1'; });
+    requestAnimationFrame(() => { el.style.transition = 'opacity 0.35s'; el.style.opacity = '1'; });
   };
-  img.onerror = () => {
-    // Real asset missing — SVG fallback is already showing
-    el.style.display = 'none';
-  };
+  img.onerror = () => { el.style.display = 'none'; };
   img.src = src;
 }
 
 function _setVideoSrc(el, src) {
   if (!el) return;
-  if (!src) {
-    el.pause();
-    el.style.display = 'none';
-    return;
-  }
+  if (!src) { el.pause(); el.removeAttribute('src'); el.style.display = 'none'; return; }
   if (el.getAttribute('data-src') === src) return;
   el.setAttribute('data-src', src);
   el.style.display = 'none';
-
   el.src = src;
   el.load();
-
   el.oncanplay = () => {
     el.style.display = 'block';
     el.play().catch(() => { el.style.display = 'none'; });
   };
-  el.onerror = () => {
-    el.style.display = 'none'; // video missing — SVG animations cover this
-  };
+  el.onerror = () => { el.style.display = 'none'; };
 }
 
-// SVG expressions — always visible as base, enhanced by real assets when available
 function _updateSVGExpression(expression) {
-  const mouth     = document.getElementById('svg-mouth');
-  const leftEye   = document.getElementById('svg-eye-l');
-  const rightEye  = document.getElementById('svg-eye-r');
-  const tail      = document.getElementById('svg-tail');
-  const brow_l    = document.getElementById('svg-brow-l');
-  const brow_r    = document.getElementById('svg-brow-r');
-  const tongue    = document.getElementById('svg-tongue');
+  const mouth  = document.getElementById('svg-mouth');
+  const eyeL   = document.getElementById('svg-eye-l');
+  const eyeR   = document.getElementById('svg-eye-r');
+  const tail   = document.getElementById('svg-tail');
+  const browL  = document.getElementById('svg-brow-l');
+  const browR  = document.getElementById('svg-brow-r');
+  const tongue = document.getElementById('svg-tongue');
 
-  const configs = {
-    idle: {
-      mouth:   'M 40 63 Q 50 67 60 63',
-      eyeRy:   5,
-      tailDur: '1.1s',
-      browY:   0,
-      tongue:  false
-    },
-    happy: {
-      mouth:   'M 37 61 Q 50 74 63 61',
-      eyeRy:   4,
-      tailDur: '0.35s',
-      browY:   -2,
-      tongue:  true
-    },
-    sad: {
-      mouth:   'M 37 66 Q 50 58 63 66',
-      eyeRy:   2.5,
-      tailDur: '2.2s',
-      browY:   3,
-      tongue:  false
-    },
-    excited: {
-      mouth:   'M 36 60 Q 50 76 64 60',
-      eyeRy:   5,
-      tailDur: '0.22s',
-      browY:   -3,
-      tongue:  true
-    }
-  };
+  const cfg = {
+    idle:    { mouth: 'M 40 63 Q 50 67 60 63', eyeRy: 5,   tailDur: '1.1s',  browY: 0,  tongue: false },
+    happy:   { mouth: 'M 37 61 Q 50 74 63 61', eyeRy: 4,   tailDur: '0.35s', browY: -2, tongue: true  },
+    sad:     { mouth: 'M 37 66 Q 50 58 63 66', eyeRy: 2.5, tailDur: '2.2s',  browY: 3,  tongue: false },
+    excited: { mouth: 'M 36 60 Q 50 76 64 60', eyeRy: 5,   tailDur: '0.22s', browY: -3, tongue: true  }
+  }[expression] || { mouth: 'M 40 63 Q 50 67 60 63', eyeRy: 5, tailDur: '1.1s', browY: 0, tongue: false };
 
-  const cfg = configs[expression] || configs.idle;
-
-  if (mouth)   mouth.setAttribute('d', cfg.mouth);
-  if (leftEye) leftEye.setAttribute('ry', cfg.eyeRy);
-  if (rightEye) rightEye.setAttribute('ry', cfg.eyeRy);
-  if (tail)    { const anim = tail.querySelector('animateTransform'); if (anim) anim.setAttribute('dur', cfg.tailDur); }
-  if (brow_l)  brow_l.setAttribute('transform', `translate(0, ${cfg.browY})`);
-  if (brow_r)  brow_r.setAttribute('transform', `translate(0, ${cfg.browY})`);
-  if (tongue)  tongue.style.display = cfg.tongue ? 'block' : 'none';
+  if (mouth)  mouth.setAttribute('d', cfg.mouth);
+  if (eyeL)   eyeL.setAttribute('ry', cfg.eyeRy);
+  if (eyeR)   eyeR.setAttribute('ry', cfg.eyeRy);
+  if (tail)   { const a = tail.querySelector('animateTransform'); if (a) a.setAttribute('dur', cfg.tailDur); }
+  if (browL)  browL.setAttribute('transform', `translate(0,${cfg.browY})`);
+  if (browR)  browR.setAttribute('transform', `translate(0,${cfg.browY})`);
+  if (tongue) tongue.style.display = cfg.tongue ? 'block' : 'none';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AUDIO SYSTEM — throttled, non-overlapping
+// AUDIO
 // ═══════════════════════════════════════════════════════════════════════════
 function initAudio() {
-  _audioEl = new Audio();
-  _audioEl.volume = 0.45;
-  // Preconnect audio context on user gesture (Safari requirement)
-  document.body.addEventListener('click', () => {
-    if (_audioEl && _audioEl.paused && !_audioEl.src) {
-      _audioEl.load(); // prime it
-    }
-  }, { once: true });
+  try {
+    _audioEl = new Audio();
+    _audioEl.volume = 0.45;
+  } catch (e) {
+    _audioEl = null;
+  }
 }
 
 function playAudio(expression) {
+  if (!_audioEl) return;
   const now = Date.now();
   if (now - _lastAudioTime < AUDIO_THROTTLE_MS) return;
-  if (!_audioEl) return;
-
   const src = MEDIA.audio[expression];
   if (!src) return;
-
   _lastAudioTime = now;
-  _audioEl.pause();
-  _audioEl.src    = src;
-  _audioEl.volume = expression === 'excited' ? 0.6 : 0.4;
-
-  _audioEl.load();
-  _audioEl.play().catch(() => {}); // silently fail if audio missing
+  try {
+    _audioEl.pause();
+    _audioEl.src    = src;
+    _audioEl.volume = expression === 'excited' ? 0.6 : 0.4;
+    _audioEl.load();
+    _audioEl.play().catch(() => {});
+  } catch (e) {}
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // STATE → UI
 // ═══════════════════════════════════════════════════════════════════════════
-function onStateChange(state) {
-  renderState(state);
-}
+function onStateChange(state) { renderState(state); }
 
 function renderState(state) {
   if (!state) return;
+  const nameEl = document.getElementById('dog-name-display');
+  if (nameEl) nameEl.textContent = state.name || 'Rex';
 
-  // Dog name
-  document.getElementById('dog-name-display').textContent = state.name || 'Rex';
+  const badgeEl = document.getElementById('mood-badge');
+  const badges  = { idle: '😐 Idle', happy: '😄 Happy', sad: '😢 Sad', excited: '🐾 Excited' };
+  if (badgeEl) badgeEl.textContent = badges[state.expression] || '😐 Idle';
 
-  // Expression label + badge
-  const badges = { idle: '😐 Idle', happy: '😄 Happy', sad: '😢 Sad', excited: '🐾 Excited' };
-  document.getElementById('mood-badge').textContent = badges[state.expression] || '😐 Idle';
-
-  // Stats
   setBar('energy-bar', state.energy);
   setBar('bond-bar',   state.bond);
-  document.getElementById('energy-val').textContent = Math.round(state.energy);
-  document.getElementById('bond-val').textContent   = Math.round(state.bond);
 
-  // Dog avatar
-  renderDog(state.expression);
+  const ev = document.getElementById('energy-val');
+  const bv = document.getElementById('bond-val');
+  if (ev) ev.textContent = Math.round(state.energy);
+  if (bv) bv.textContent = Math.round(state.bond);
+
+  renderDog(state.expression || 'idle');
 }
 
 function setBar(id, val) {
   const el = document.getElementById(id);
-  if (el) el.style.width = `${Math.round(Math.min(100, Math.max(0, val)))}%`;
+  if (el) el.style.width = `${Math.round(Math.min(100, Math.max(0, val || 0)))}%`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CHAT + MESSAGE SYSTEM
+// CHAT
 // ═══════════════════════════════════════════════════════════════════════════
 async function loadAndRenderMemory() {
-  const memories = await window.Storage.loadMemory();
+  let memories = [];
+  try { memories = await window.Storage.loadMemory(); } catch (e) {}
   const container = document.getElementById('chat-history');
+  if (!container) return;
   container.innerHTML = '';
   if (memories.length === 0) {
     showWelcome();
@@ -297,233 +249,225 @@ async function loadAndRenderMemory() {
 }
 
 function showWelcome() {
-  const container = document.getElementById('chat-history');
+  const c = document.getElementById('chat-history');
+  if (!c) return;
   const el = document.createElement('div');
   el.id = 'chat-welcome';
   el.className = 'chat-welcome';
   el.innerHTML = `
     <div class="welcome-paw">🐾</div>
     <div class="welcome-text">Your companion is waiting.<br/>Say hello, feed them, or just chat.</div>
-    <div class="welcome-hint">Add your OpenAI key in Settings for full AI responses.</div>
+    <div class="welcome-hint">Add your OpenAI key in ⚙ Settings for full AI responses.</div>
   `;
-  container.appendChild(el);
+  c.appendChild(el);
 }
 
-function removeWelcome() {
-  document.getElementById('chat-welcome')?.remove();
-}
+function removeWelcome() { document.getElementById('chat-welcome')?.remove(); }
 
 function appendMessage(role, content, scroll = true) {
   removeWelcome();
-  const container = document.getElementById('chat-history');
-  const row = document.createElement('div');
+  const c = document.getElementById('chat-history');
+  if (!c) return;
+  const row    = document.createElement('div');
   row.className = `chat-msg ${role === 'user' ? 'msg-user' : 'msg-dog'}`;
-  const bubble = document.createElement('div');
+  const bubble  = document.createElement('div');
   bubble.className = 'bubble';
   bubble.textContent = content;
   row.appendChild(bubble);
-  container.appendChild(row);
+  c.appendChild(row);
   if (scroll) scrollChat();
 }
 
 function scrollChat() {
   const c = document.getElementById('chat-history');
-  c.scrollTop = c.scrollHeight;
+  if (c) c.scrollTop = c.scrollHeight;
 }
 
-// ── Typing indicator ───────────────────────────────────────────────────────
 function showTyping() {
   const id = `typing-${Date.now()}`;
-  const container = document.getElementById('chat-history');
+  const c  = document.getElementById('chat-history');
+  if (!c) return id;
   const row = document.createElement('div');
   row.id = id;
   row.className = 'chat-msg msg-dog';
   row.innerHTML = '<div class="bubble typing-bubble"><span></span><span></span><span></span></div>';
-  container.appendChild(row);
+  c.appendChild(row);
   scrollChat();
   return id;
 }
 function removeTyping(id) { document.getElementById(id)?.remove(); }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SEND FLOW
+// SEND
 // ═══════════════════════════════════════════════════════════════════════════
 let _sendLock = false;
 
 async function handleSend() {
   const input = document.getElementById('chat-input');
-  const msg   = input.value.trim();
+  if (!input) return;
+  const msg = input.value.trim();
   if (!msg || _sendLock) return;
 
-  _sendLock = true;
+  _sendLock      = true;
   input.value    = '';
   input.disabled = true;
 
-  // 1. Show user message
   appendMessage('user', msg);
-  await window.Storage.addMemory({ role: 'user', content: msg });
 
-  // 2. Engine: register interaction
-  const state = await window.Engine.dispatch({ type: 'CHAT' });
+  try { await window.Storage.addMemory({ role: 'user', content: msg }); } catch (e) {}
 
-  // 3. Play audio for current expression
-  playAudio(state?.expression || 'idle');
+  let state = null;
+  try { state = await window.Engine.dispatch({ type: 'CHAT' }); } catch (e) {}
+  state = state || window.Engine.getState() || { expression: 'idle', name: 'Rex' };
 
-  // 4. Get updated memories for AI context
-  const memories = await window.Storage.loadMemory();
+  playAudio(state.expression);
 
-  // 5. AI request
+  let memories = [];
+  try { memories = await window.Storage.loadMemory(); } catch (e) {}
+
   const typingId = showTyping();
-  let response;
-  if (window.AI.isBusy()) {
-    response = window.AI.getFallback(state?.expression || 'idle');
-  } else {
-    response = await window.AI.ask(msg, state || window.Engine.getState(), memories);
-  }
+
+  let response = null;
+  try {
+    if (!window.AI.isBusy()) {
+      response = await window.AI.ask(msg, state, memories);
+    }
+  } catch (e) {}
 
   removeTyping(typingId);
-  const dogReply = response || window.AI.getFallback(state?.expression || 'idle');
-  appendMessage('dog', dogReply);
+  const reply = response || window.AI.getFallback(state.expression);
+  appendMessage('dog', reply);
 
-  // 6. Save dog reply + enforce cap
-  await window.Storage.addMemory({ role: 'dog', content: dogReply });
-  await window.Storage.enforceMemoryCap();
+  try { await window.Storage.addMemory({ role: 'dog', content: reply }); } catch (e) {}
+  try { await window.Storage.enforceMemoryCap(); } catch (e) {}
 
   input.disabled = false;
   input.focus();
   _sendLock = false;
 }
 
-// ── Action buttons ─────────────────────────────────────────────────────────
-async function handleAction(type, displayMsg, audioOverride) {
-  const state = await window.Engine.dispatch({ type });
-  playAudio(audioOverride || state?.expression || 'idle');
+async function handleAction(type, displayMsg, audioExpr) {
+  let state = null;
+  try { state = await window.Engine.dispatch({ type }); } catch (e) {}
+  playAudio(audioExpr || state?.expression || 'idle');
   appendMessage('dog', displayMsg);
-  await window.Storage.addMemory({ role: 'dog', content: displayMsg });
-  await window.Storage.enforceMemoryCap();
+  try { await window.Storage.addMemory({ role: 'dog', content: displayMsg }); } catch (e) {}
+  try { await window.Storage.enforceMemoryCap(); } catch (e) {}
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EVENT BINDING
 // ═══════════════════════════════════════════════════════════════════════════
 function bindEvents() {
-  // Chat
-  document.getElementById('send-btn').addEventListener('click', handleSend);
-  document.getElementById('chat-input').addEventListener('keydown', e => {
+  const $  = (id) => document.getElementById(id);
+
+  $('send-btn')?.addEventListener('click', handleSend);
+  $('chat-input')?.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   });
 
-  // Pet the dog (tap the stage)
-  document.getElementById('dog-stage').addEventListener('click', async () => {
-    const state = await window.Engine.dispatch({ type: 'PET' });
+  // Tap dog to pet
+  $('dog-stage')?.addEventListener('click', async () => {
+    let state = null;
+    try { state = await window.Engine.dispatch({ type: 'PET' }); } catch (e) {}
     playAudio(state?.expression || 'idle');
-    showToast(`${state?.name || 'Rex'} loves the attention! 🐾`);
-    // brief excited override
+    const name = state?.name || 'Rex';
+    showToast(`${name} loves the attention! 🐾`);
     renderDog('excited');
-    setTimeout(() => renderDog(state?.expression || 'idle'), 800);
+    setTimeout(() => renderDog(state?.expression || 'idle'), 900);
   });
 
-  // Action buttons
-  document.getElementById('btn-feed').addEventListener('click', () =>
-    handleAction('FEED', '🍖 *gobbles up the food and wags tail happily*', 'happy')
-  );
-  document.getElementById('btn-play').addEventListener('click', () =>
-    handleAction('PLAY', '🎾 *zooms around excitedly and fetches the ball!*', 'excited')
-  );
-  document.getElementById('btn-rest').addEventListener('click', () =>
-    handleAction('REST', '💤 *curls up in a cozy spot and sighs contentedly*', 'idle')
-  );
+  $('btn-feed')?.addEventListener('click', () =>
+    handleAction('FEED', '🍖 *gobbles up the food and wags tail happily*', 'happy'));
+  $('btn-play')?.addEventListener('click', () =>
+    handleAction('PLAY', '🎾 *zooms around excitedly and fetches the ball!*', 'excited'));
+  $('btn-rest')?.addEventListener('click', () =>
+    handleAction('REST', '💤 *curls up in a cozy spot and sighs contentedly*', 'idle'));
 
-  // Settings
-  document.getElementById('settings-btn').addEventListener('click', openSettings);
-  document.getElementById('close-settings').addEventListener('click', closeSettings);
-  document.getElementById('settings-overlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('settings-overlay')) closeSettings();
+  $('settings-btn')?.addEventListener('click', openSettings);
+  $('close-settings')?.addEventListener('click', closeSettings);
+  $('settings-overlay')?.addEventListener('click', e => {
+    if (e.target === $('settings-overlay')) closeSettings();
   });
 
-  // API Key
-  document.getElementById('save-api-key').addEventListener('click', () => {
-    const key = document.getElementById('api-key-input').value.trim();
+  $('save-api-key')?.addEventListener('click', () => {
+    const key = $('api-key-input')?.value.trim();
     if (key) {
       window.AI.setApiKey(key);
-      localStorage.setItem('immortail_api_key', key);
+      try { localStorage.setItem('immortail_api_key', key); } catch (e) {}
       setApiStatus(true);
       showToast('API key saved ✓');
     }
   });
-  document.getElementById('clear-api-key').addEventListener('click', () => {
+
+  $('clear-api-key')?.addEventListener('click', () => {
     window.AI.setApiKey(null);
-    localStorage.removeItem('immortail_api_key');
-    document.getElementById('api-key-input').value = '';
+    try { localStorage.removeItem('immortail_api_key'); } catch (e) {}
+    if ($('api-key-input')) $('api-key-input').value = '';
     setApiStatus(false);
-    showToast('API key removed');
+    showToast('API key cleared');
   });
 
-  // Rename
-  document.getElementById('save-name').addEventListener('click', async () => {
-    const name = document.getElementById('dog-name-input').value.trim();
+  $('save-name')?.addEventListener('click', async () => {
+    const name = $('dog-name-input')?.value.trim();
     if (name) {
-      await window.Engine.dispatch({ type: 'RENAME', name });
+      try { await window.Engine.dispatch({ type: 'RENAME', name }); } catch (e) {}
       showToast(`Renamed to ${name} ✓`);
     }
   });
 
-  // Export
-  document.getElementById('export-btn').addEventListener('click', async () => {
+  $('export-btn')?.addEventListener('click', async () => {
     try {
       const key = await window.Storage.exportKey();
-      document.getElementById('export-output').value = key;
+      if ($('export-output')) $('export-output').value = key;
       showToast('Migration key ready ✓');
-    } catch (e) {
-      showToast('Export failed: ' + e.message, true);
-    }
-  });
-  document.getElementById('copy-export').addEventListener('click', () => {
-    const val = document.getElementById('export-output').value;
-    if (val) navigator.clipboard.writeText(val).then(() => showToast('Copied ✓'));
+    } catch (e) { showToast('Export failed: ' + e.message, true); }
   });
 
-  // Import
-  document.getElementById('import-btn').addEventListener('click', async () => {
-    const keyStr = document.getElementById('import-input').value.trim();
+  $('copy-export')?.addEventListener('click', () => {
+    const val = $('export-output')?.value;
+    if (val) navigator.clipboard?.writeText(val).then(() => showToast('Copied ✓')).catch(() => {});
+  });
+
+  $('import-btn')?.addEventListener('click', async () => {
+    const keyStr = $('import-input')?.value.trim();
     if (!keyStr) { showToast('Paste a migration key first', true); return; }
-
     const existing = window.Engine.getState();
     if (existing?.totalInteractions > 0) {
-      const ok = window.confirm(
-        `⚠ This will overwrite ${existing.name} (${existing.totalInteractions} interactions). Continue?`
-      );
-      if (!ok) return;
+      if (!window.confirm(`⚠ This will overwrite ${existing.name} (${existing.totalInteractions} interactions). Continue?`)) return;
     }
     try {
       await window.Storage.importKey(keyStr);
       showToast('Imported! Reloading…');
       setTimeout(() => location.reload(), 1200);
-    } catch (e) {
-      showToast('Import failed: ' + e.message, true);
-    }
+    } catch (e) { showToast('Import failed: ' + e.message, true); }
   });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SETTINGS MODAL
+// SETTINGS
 // ═══════════════════════════════════════════════════════════════════════════
 function openSettings() {
-  document.getElementById('settings-overlay').classList.add('open');
+  document.getElementById('settings-overlay')?.classList.add('open');
   const s = window.Engine.getState();
-  if (s) document.getElementById('dog-name-input').value = s.name || '';
-  if (localStorage.getItem('immortail_api_key')) {
-    document.getElementById('api-key-input').placeholder = 'sk-••••••••••••••••';
-  }
+  const ni = document.getElementById('dog-name-input');
+  if (ni && s) ni.value = s.name || '';
+  try {
+    if (localStorage.getItem('immortail_api_key')) {
+      const ki = document.getElementById('api-key-input');
+      if (ki) ki.placeholder = 'sk-••••••••••••••••';
+    }
+  } catch (e) {}
 }
+
 function closeSettings() {
-  document.getElementById('settings-overlay').classList.remove('open');
+  document.getElementById('settings-overlay')?.classList.remove('open');
 }
 
 function setApiStatus(on) {
   const dot   = document.getElementById('api-status-dot');
   const label = document.getElementById('api-status-label');
-  if (dot)   dot.className  = 'status-dot ' + (on ? 'connected' : 'disconnected');
+  if (dot)   dot.className     = 'status-dot ' + (on ? 'connected' : 'disconnected');
   if (label) label.textContent = on ? 'AI Connected' : 'Fallback Mode';
 }
 
@@ -533,10 +477,10 @@ function setApiStatus(on) {
 function showToast(msg, isError = false) {
   document.querySelector('.toast')?.remove();
   const t = document.createElement('div');
-  t.className = 'toast' + (isError ? ' toast-error' : '');
+  t.className   = 'toast' + (isError ? ' toast-error' : '');
   t.textContent = msg;
   document.body.appendChild(t);
-  requestAnimationFrame(() => { requestAnimationFrame(() => t.classList.add('show')); });
+  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
   setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 350); }, 2800);
 }
 
@@ -547,10 +491,15 @@ function hideSplash() {
   const s = document.getElementById('splash');
   if (!s) return;
   s.style.opacity = '0';
-  setTimeout(() => s.remove(), 600);
+  setTimeout(() => s.remove(), 580);
 }
 
-function showFatalError(msg) {
+function showSplashError(msg) {
   const s = document.getElementById('splash');
-  if (s) s.innerHTML = `<div class="splash-error">${msg}</div>`;
+  const r = document.getElementById('splash-ring');
+  if (r) r.style.display = 'none';
+  const err = document.createElement('div');
+  err.className   = 'splash-error';
+  err.textContent = msg;
+  if (s) s.appendChild(err);
 }
