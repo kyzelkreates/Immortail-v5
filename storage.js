@@ -212,6 +212,15 @@ async function clearMemory() {
   });
 }
 
+// ── Environment persistence ────────────────────────────────────────────────
+async function saveEnv(envId) {
+  await setConfig('selected_env', envId);
+}
+
+async function loadEnv() {
+  return getConfig('selected_env', 'home');
+}
+
 // ── Export / Import — full backup including config ─────────────────────────
 async function exportKey() {
   const [state, memory, config] = await Promise.all([
@@ -292,6 +301,7 @@ window.Storage = {
   setConfig, getConfig, getAllConfig, deleteConfig,
   saveAIConfig, loadAIConfig,
   savePWASettings, loadPWASettings,
+  saveEnv, loadEnv,
   // Export/Import
   exportKey, importKey,
   // PWA
